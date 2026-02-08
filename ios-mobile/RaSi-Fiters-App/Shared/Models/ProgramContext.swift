@@ -454,8 +454,12 @@ final class ProgramContext: ObservableObject {
         guard let token = authToken, !token.isEmpty else {
             throw APIError(message: "No auth token")
         }
+        guard let pid = programId else {
+            throw APIError(message: "No program selected")
+        }
         try await APIClient.shared.deleteWorkoutLog(
             token: token,
+            programId: pid,
             memberId: memberId,
             workoutName: workoutName,
             date: date

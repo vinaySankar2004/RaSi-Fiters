@@ -13,6 +13,8 @@ struct ProgramPickerView: View {
     @State private var programToEdit: APIClient.ProgramDTO?
     @State private var programToOpen: APIClient.ProgramDTO?
     @State private var showSignOutConfirmation = false
+    @State private var showAccountMenu = false
+    @State private var accountDestination: AccountDestination?
     
     private var pendingInvitesCount: Int {
         programContext.pendingInvites.count
@@ -97,7 +99,7 @@ struct ProgramPickerView: View {
                 
                 // Bottom padding for floating button
                 Color.clear
-                    .frame(height: 70)
+                    .frame(height: 90)
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
             }
@@ -112,12 +114,17 @@ struct ProgramPickerView: View {
                 Spacer()
             }
             
-            // Floating sign out button at bottom
+            // Floating action at bottom right
             VStack {
                 Spacer()
-                floatingSignOutButton
-                    .padding(.bottom, 24)
+                HStack {
+                    Spacer()
+                    floatingProgramActionsButton
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 24)
+                }
             }
+
         }
         .navigationBarBackButtonHidden(true)
         .task {
@@ -134,6 +141,13 @@ struct ProgramPickerView: View {
             })
             .environmentObject(programContext)
         }
+        .sheet(isPresented: $showAccountMenu) {
+            AccountMenuSheet(
+                onSelectDestination: handleAccountSelection(_:),
+                onSignOut: handleAccountSignOut
+            )
+            .environmentObject(programContext)
+        }
         .navigationDestination(item: $programToOpen) { _ in
             AdminHomeView()
                 .environmentObject(programContext)
@@ -141,6 +155,16 @@ struct ProgramPickerView: View {
         .navigationDestination(item: $programToEdit) { _ in
             EditProgramInfoView()
                 .environmentObject(programContext)
+        }
+        .navigationDestination(item: $accountDestination) { destination in
+            switch destination {
+            case .profile:
+                MyProfileView()
+            case .password:
+                ChangePasswordView()
+            case .appearance:
+                AppearanceSettingsView()
+            }
         }
         .alert("Delete Program?", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) {
@@ -178,59 +202,50 @@ struct ProgramPickerView: View {
                     .font(.headline.weight(.semibold))
                     .foregroundColor(Color(.secondaryLabel))
             }
-
             Spacer()
-
             Button {
-                showProgramActions = true
+                showAccountMenu = true
             } label: {
                 ZStack {
                     Circle()
                         .fill(colorScheme == .dark ? Color(.white) : Color(.black))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .bold))
+                        .frame(width: 56, height: 56)
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 20, weight: .semibold))
                         .foregroundColor(colorScheme == .dark ? .black : .white)
-                    
-                    // Badge for pending invites
-                    if pendingInvitesCount > 0 {
-                        Text("\(pendingInvitesCount)")
-                            .font(.caption2.weight(.bold))
-                            .foregroundColor(.white)
-                            .padding(5)
-                            .background(Circle().fill(Color.appRed))
-                            .offset(x: 16, y: -16)
-                    }
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Account settings")
         }
         .padding(.horizontal, 4)
     }
     
-    private var floatingSignOutButton: some View {
+    private var floatingProgramActionsButton: some View {
         Button {
-            showSignOutConfirmation = true
+            showProgramActions = true
         } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
-                    .font(.subheadline.weight(.medium))
-                Text("Sign Out")
-                    .font(.subheadline.weight(.semibold))
+            ZStack {
+                Circle()
+                    .fill(colorScheme == .dark ? Color(.white) : Color(.black))
+                    .frame(width: 56, height: 56)
+                Image(systemName: "plus")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(colorScheme == .dark ? .black : .white)
+
+                // Badge for pending invites
+                if pendingInvitesCount > 0 {
+                    Text("\(pendingInvitesCount)")
+                        .font(.caption2.weight(.bold))
+                        .foregroundColor(.white)
+                        .padding(5)
+                        .background(Circle().fill(Color.appRed))
+                        .offset(x: 18, y: -18)
+                }
             }
-            .foregroundColor(Color.appRed.opacity(0.9))
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(
-                Capsule()
-                    .fill(Color.appRed.opacity(0.12))
-            )
-            .overlay(
-                Capsule()
-                    .stroke(Color.appRed.opacity(0.25), lineWidth: 1)
-            )
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Program actions")
     }
 
     private func deleteProgram(_ program: APIClient.ProgramDTO) async {
@@ -327,6 +342,252 @@ struct ProgramPickerView: View {
             }
         }
         isLoading = false
+    }
+
+    private func handleAccountSelection(_ destination: AccountDestination) {
+        showAccountMenu = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            accountDestination = destination
+        }
+    }
+
+    private func handleAccountSignOut() {
+        showAccountMenu = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            showSignOutConfirmation = true
+        }
+    }
+}
+
+private enum AccountDestination: String, Identifiable {
+    case profile
+    case password
+    case appearance
+
+    var id: String { rawValue }
+}
+
+private struct AccountMenuSheet: View {
+    @EnvironmentObject var programContext: ProgramContext
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+
+    let onSelectDestination: (AccountDestination) -> Void
+    let onSignOut: () -> Void
+
+    private let privacyPolicyURL = URL(string: "https://vinaysankar2004.github.io/RaSi-Fiters/")!
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.appBackground
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        header
+
+                        VStack(spacing: 12) {
+                            Button {
+                                onSelectDestination(.profile)
+                            } label: {
+                                ProfileRow(
+                                    initials: programContext.loggedInUserInitials,
+                                    name: programContext.loggedInUserName ?? "My Profile",
+                                    username: programContext.loggedInUsername ?? ""
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                onSelectDestination(.password)
+                            } label: {
+                                AccountRow(
+                                    icon: "lock.fill",
+                                    color: .appOrange,
+                                    title: "Change Password",
+                                    subtitle: "Update your account password"
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                onSelectDestination(.appearance)
+                            } label: {
+                                AccountRow(
+                                    icon: "paintpalette.fill",
+                                    color: .appPurple,
+                                    title: "Appearance",
+                                    subtitle: "Choose light or dark mode"
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                dismiss()
+                                openURL(privacyPolicyURL)
+                            } label: {
+                                AccountRow(
+                                    icon: "doc.text",
+                                    color: .appOrange,
+                                    title: "Privacy Policy",
+                                    subtitle: "Learn how we handle your data"
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                onSignOut()
+                            } label: {
+                                SignOutRow()
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color(.systemGray5))
+                    .frame(width: 48, height: 48)
+                Image(systemName: "person.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("My Account")
+                    .font(.title3.weight(.bold))
+                    .foregroundColor(Color(.label))
+                Text("Manage your profile and preferences.")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+            Spacer()
+        }
+    }
+}
+
+private struct ProfileRow: View {
+    let initials: String
+    let name: String
+    let username: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.appOrangeLight)
+                    .frame(width: 42, height: 42)
+                Text(initials)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.appOrange)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Color(.label))
+                Text(username.isEmpty ? "Update your personal info" : "@\(username)")
+                    .font(.caption)
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Color(.tertiaryLabel))
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color(.systemGray4).opacity(0.6), lineWidth: 1)
+        )
+    }
+}
+
+private struct AccountRow: View {
+    let icon: String
+    let color: Color
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.14))
+                    .frame(width: 42, height: 42)
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(color)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Color(.label))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Color(.tertiaryLabel))
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color(.systemGray4).opacity(0.6), lineWidth: 1)
+        )
+    }
+}
+
+private struct SignOutRow: View {
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.appRedLight)
+                    .frame(width: 42, height: 42)
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.appRed)
+            }
+            Text("Sign Out")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.appRed)
+            Spacer()
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.systemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.appRed.opacity(0.3), lineWidth: 1)
+        )
     }
 }
 

@@ -1094,7 +1094,7 @@ final class APIClient {
         return try JSONDecoder().decode(MemberRecentWorkoutsResponse.self, from: data)
     }
     
-    func deleteWorkoutLog(token: String, memberId: String, workoutName: String, date: String) async throws {
+    func deleteWorkoutLog(token: String, programId: String, memberId: String, workoutName: String, date: String) async throws {
         var request = URLRequest(url: baseURL.appendingPathComponent("workout-logs"))
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -1102,6 +1102,7 @@ final class APIClient {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
         let body: [String: Any] = [
+            "program_id": programId,
             "member_id": memberId,
             "workout_name": workoutName,
             "date": date

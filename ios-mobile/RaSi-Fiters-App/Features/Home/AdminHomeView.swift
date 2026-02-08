@@ -3730,7 +3730,7 @@ private struct ProgramMyAccountSection: View {
 
 // MARK: - Appearance Settings
 
-private struct AppearanceSettingsView: View {
+struct AppearanceSettingsView: View {
     @EnvironmentObject var themeManager: ThemeManager
     @Environment(\.colorScheme) private var colorScheme
     
@@ -3857,7 +3857,7 @@ private struct AppearanceSettingsView: View {
 }
 
 
-private struct MyProfileView: View {
+struct MyProfileView: View {
     @EnvironmentObject var programContext: ProgramContext
     @State private var firstName: String = ""
     @State private var lastName: String = ""
@@ -4083,7 +4083,7 @@ private struct MyProfileView: View {
     }
 }
 
-private struct ChangePasswordView: View {
+struct ChangePasswordView: View {
     @EnvironmentObject var programContext: ProgramContext
     @Environment(\.dismiss) private var dismiss
 
