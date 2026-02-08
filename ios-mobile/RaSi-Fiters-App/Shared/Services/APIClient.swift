@@ -1111,6 +1111,34 @@ final class APIClient {
         _ = try await data(for: request)
     }
 
+    func updateWorkoutLog(
+        token: String,
+        programId: String,
+        memberName: String?,
+        workoutName: String,
+        date: String,
+        duration: Int
+    ) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("workout-logs"))
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        var body: [String: Any] = [
+            "program_id": programId,
+            "workout_name": workoutName,
+            "date": date,
+            "duration": duration
+        ]
+        if let memberName, !memberName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            body["member_name"] = memberName
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        _ = try await data(for: request)
+    }
+
     // MARK: - Program Management
 
     func updateProgram(token: String, programId: String, name: String?, status: String?, startDate: String?, endDate: String?) async throws -> ProgramUpdateResponse {

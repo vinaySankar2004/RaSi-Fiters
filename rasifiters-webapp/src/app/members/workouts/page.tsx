@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { loadActiveProgram } from "@/lib/storage";
 import { fetchMemberRecentWorkouts, type MemberRecentItem } from "@/lib/api/members";
-import { deleteWorkoutLog } from "@/lib/api/logs";
+import { deleteWorkoutLog, updateWorkoutLog } from "@/lib/api/logs";
 import { Select } from "@/components/Select";
 import { BackButton } from "@/components/BackButton";
 import { useClientSearchParams } from "@/lib/use-client-search-params";
@@ -39,12 +39,15 @@ export default function MemberWorkoutsPage() {
   const canViewAny = isGlobalAdmin || program?.my_role === "admin" || program?.my_role === "logger";
   const loggedInUserId = session?.user.id;
   const canDelete = isGlobalAdmin || memberId === loggedInUserId;
+  const canEdit = canDelete;
 
   const [sortField, setSortField] = useState("date");
   const [sortDir, setSortDir] = useState("desc");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [showFilter, setShowFilter] = useState(false);
+  const [editTarget, setEditTarget] = useState<MemberRecentItem | null>(null);
+  const [editDuration, setEditDuration] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -95,6 +98,24 @@ export default function MemberWorkoutsPage() {
     }
   });
 
+  const updateMutation = useMutation({
+    mutationFn: (duration: number) =>
+      updateWorkoutLog(token, {
+        program_id: programId,
+        workout_name: editTarget?.workoutType ?? "",
+        date: editTarget?.workoutDate ?? "",
+        duration,
+        member_name: memberId === loggedInUserId ? undefined : memberName
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["members", "workouts", programId, memberId] });
+      setEditTarget(null);
+    },
+    onError: (error) => {
+      setErrorMessage(error instanceof Error ? error.message : "Unable to update workout.");
+    }
+  });
+
   const handleExport = () => {
     if (!workoutsQuery.data || workoutsQuery.data.items.length === 0) return;
     const filename = `Workouts_${memberName.replace(/\s+/g, "")}_${startDate || "all"}_to_${endDate || "today"}.csv`;
@@ -109,6 +130,22 @@ export default function MemberWorkoutsPage() {
     if (!startDate && !endDate) return null;
     return `${startDate || "Start"} – ${endDate || "End"}`;
   }, [startDate, endDate]);
+
+  const openEdit = (item: MemberRecentItem) => {
+    setEditTarget(item);
+    setEditDuration(String(item.durationMinutes));
+    setErrorMessage(null);
+  };
+
+  const submitEdit = () => {
+    if (!editTarget) return;
+    const durationValue = Number(editDuration);
+    if (!Number.isFinite(durationValue) || durationValue <= 0) {
+      setErrorMessage("Enter a valid duration before saving.");
+      return;
+    }
+    updateMutation.mutate(durationValue);
+  };
 
   return (
     <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
@@ -179,18 +216,27 @@ export default function MemberWorkoutsPage() {
                     <p className="text-sm font-semibold text-rf-text">{item.durationMinutes} min</p>
                   </div>
                 </div>
-                {canDelete && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const confirmed = window.confirm("Delete this workout log?");
-                      if (!confirmed) return;
-                      deleteMutation.mutate(item);
-                    }}
-                    className="mt-3 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600"
-                  >
-                    Delete
-                  </button>
+                {canEdit && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(item)}
+                      className="rounded-full bg-rf-surface-muted px-3 py-1 text-xs font-semibold text-rf-text-muted"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const confirmed = window.confirm("Delete this workout log?");
+                        if (!confirmed) return;
+                        deleteMutation.mutate(item);
+                      }}
+                      className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
@@ -241,6 +287,70 @@ export default function MemberWorkoutsPage() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      <Modal open={!!editTarget} onClose={() => setEditTarget(null)}>
+        {editTarget && (
+          <div className="modal-surface w-full max-w-md rounded-3xl p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-rf-text">Edit Workout Log</h2>
+              <button
+                type="button"
+                onClick={() => setEditTarget(null)}
+                className="rounded-full bg-rf-surface-muted px-3 py-1 text-xs font-semibold text-rf-text-muted"
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="text-sm font-semibold text-rf-text">Workout</label>
+                <input
+                  type="text"
+                  value={editTarget.workoutType}
+                  disabled
+                  className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium opacity-60"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-rf-text">Date</label>
+                <input
+                  type="date"
+                  value={editTarget.workoutDate}
+                  disabled
+                  className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium opacity-60"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-rf-text">Duration (minutes)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={editDuration}
+                  onChange={(event) => setEditDuration(event.target.value)}
+                  className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEditTarget(null)}
+                className="rounded-full bg-rf-surface-muted px-4 py-2 text-xs font-semibold text-rf-text-muted"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitEdit}
+                disabled={updateMutation.isPending}
+                className="button-primary rounded-full px-5 py-2 text-xs font-semibold"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -467,6 +467,24 @@ final class ProgramContext: ObservableObject {
     }
 
     @MainActor
+    func updateWorkoutLog(memberName: String?, workoutName: String, date: String, durationMinutes: Int) async throws {
+        guard let token = authToken, !token.isEmpty else {
+            throw APIError(message: "No auth token")
+        }
+        guard let pid = programId else {
+            throw APIError(message: "No program selected")
+        }
+        try await APIClient.shared.updateWorkoutLog(
+            token: token,
+            programId: pid,
+            memberName: memberName,
+            workoutName: workoutName,
+            date: date,
+            duration: durationMinutes
+        )
+    }
+
+    @MainActor
     func updateDailyHealthLog(
         memberId: String,
         logDate: String,

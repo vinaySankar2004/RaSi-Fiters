@@ -427,6 +427,11 @@ private struct MemberRecentDetail: View {
     @State private var itemToDelete: APIClient.MemberRecentWorkoutsResponse.Item?
     @State private var deleteErrorMessage: String?
     @State private var showDeleteErrorAlert = false
+    @State private var deleteSuccessMessage: String?
+    @State private var showDeleteSuccessAlert = false
+    @State private var itemToEdit: APIClient.MemberRecentWorkoutsResponse.Item?
+    @State private var editSuccessMessage: String?
+    @State private var showEditSuccessAlert = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -462,6 +467,23 @@ private struct MemberRecentDetail: View {
             WorkoutFilterSheet(filters: $filters)
                 .presentationDetents([.medium])
         }
+        .sheet(item: $itemToEdit) { item in
+            WorkoutLogEditSheet(memberName: memberName, item: item) { updatedDuration in
+                withAnimation {
+                    if let index = programContext.memberRecent.firstIndex(where: { $0.id == item.id }) {
+                        programContext.memberRecent[index] = APIClient.MemberRecentWorkoutsResponse.Item(
+                            id: item.id,
+                            workoutType: item.workoutType,
+                            workoutDate: item.workoutDate,
+                            durationMinutes: updatedDuration
+                        )
+                    }
+                }
+                editSuccessMessage = "\"\(item.workoutType)\" updated."
+                showEditSuccessAlert = true
+            }
+            .environmentObject(programContext)
+        }
         .alert("Delete Workout", isPresented: $showDeleteAlert, presenting: itemToDelete) { item in
             Button("Delete", role: .destructive) {
                 Task { await deleteWorkout(item) }
@@ -474,6 +496,16 @@ private struct MemberRecentDetail: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(deleteErrorMessage ?? "Unable to delete workout.")
+        }
+        .alert("Deleted", isPresented: $showDeleteSuccessAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(deleteSuccessMessage ?? "Workout deleted.")
+        }
+        .alert("Saved", isPresented: $showEditSuccessAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(editSuccessMessage ?? "Workout updated.")
         }
         .task { await loadWorkouts() }
         .onChange(of: sortField) { _ in Task { await loadWorkouts() } }
@@ -578,6 +610,14 @@ private struct MemberRecentDetail: View {
                             .listRowInsets(EdgeInsets(top: 4, leading: 20, bottom: 4, trailing: 20))
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button {
+                                    itemToEdit = item
+                                } label: {
+                                    Label("Edit", systemImage: "pencil")
+                                }
+                                .tint(.appBlue)
+                            }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
                                     itemToDelete = item
@@ -643,6 +683,7 @@ private struct MemberRecentDetail: View {
         isLoading = false
     }
     
+    @MainActor
     private func deleteWorkout(_ item: APIClient.MemberRecentWorkoutsResponse.Item) async {
         guard let mId = memberId else { return }
         do {
@@ -651,7 +692,13 @@ private struct MemberRecentDetail: View {
                 workoutName: item.workoutType,
                 date: item.workoutDate
             )
-            await loadWorkouts()
+            withAnimation {
+                programContext.memberRecent.removeAll { $0.id == item.id }
+            }
+            itemToDelete = nil
+            deleteErrorMessage = nil
+            deleteSuccessMessage = "\"\(item.workoutType)\" deleted."
+            showDeleteSuccessAlert = true
         } catch {
             deleteErrorMessage = error.localizedDescription
             showDeleteErrorAlert = true
@@ -1440,6 +1487,124 @@ private struct DailyHealthEditSheet: View {
                 foodQuality: foodQuality
             )
             onSaved()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+            showErrorAlert = true
+        }
+
+        isSaving = false
+    }
+}
+
+private struct WorkoutLogEditSheet: View {
+    @EnvironmentObject var programContext: ProgramContext
+    @Environment(\.dismiss) private var dismiss
+    let memberName: String?
+    let item: APIClient.MemberRecentWorkoutsResponse.Item
+    let onSaved: (Int) -> Void
+
+    @State private var durationText: String
+    @State private var isSaving = false
+    @State private var errorMessage: String?
+    @State private var showErrorAlert = false
+
+    init(
+        memberName: String?,
+        item: APIClient.MemberRecentWorkoutsResponse.Item,
+        onSaved: @escaping (Int) -> Void
+    ) {
+        self.memberName = memberName
+        self.item = item
+        self.onSaved = onSaved
+        _durationText = State(initialValue: "\(item.durationMinutes)")
+    }
+
+    private var trimmedDurationText: String {
+        durationText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var durationValue: Int? {
+        guard !trimmedDurationText.isEmpty else { return nil }
+        return Int(trimmedDurationText)
+    }
+
+    private var isDurationValid: Bool {
+        guard let durationValue else { return false }
+        return durationValue > 0
+    }
+
+    private var isFormValid: Bool {
+        isDurationValid
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Edit workout log")
+                        .font(.title2.weight(.bold))
+                        .foregroundColor(Color(.label))
+                    Text(item.workoutType)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(Color(.secondaryLabel))
+                    Text(item.workoutDate)
+                        .font(.subheadline)
+                        .foregroundColor(Color(.secondaryLabel))
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Duration (minutes)")
+                        .font(.subheadline.weight(.semibold))
+                    TextField("e.g. 45", text: $durationText)
+                        .keyboardType(.numberPad)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    if !isDurationValid {
+                        Text("Enter a duration greater than 0.")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundColor(.appRed)
+                    }
+                }
+
+                Button(action: { Task { await save() } }) {
+                    if isSaving {
+                        ProgressView().tint(.white)
+                    } else {
+                        Text("Save changes")
+                            .font(.headline.weight(.semibold))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(isFormValid ? Color.appBlue : Color(.systemGray3))
+                .foregroundColor(.white)
+                .cornerRadius(14)
+                .disabled(isSaving || !isFormValid)
+            }
+            .padding(20)
+        }
+        .alert("Unable to save", isPresented: $showErrorAlert) {
+            Button("OK") { showErrorAlert = false }
+        } message: {
+            Text(errorMessage ?? "Something went wrong.")
+        }
+    }
+
+    private func save() async {
+        guard let durationValue, isFormValid else { return }
+        isSaving = true
+        errorMessage = nil
+
+        do {
+            try await programContext.updateWorkoutLog(
+                memberName: memberName,
+                workoutName: item.workoutType,
+                date: item.workoutDate,
+                durationMinutes: durationValue
+            )
+            onSaved(durationValue)
             dismiss()
         } catch {
             errorMessage = error.localizedDescription

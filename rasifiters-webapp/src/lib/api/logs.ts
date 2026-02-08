@@ -73,3 +73,14 @@ export async function deleteWorkoutLog(
     body: payload
   });
 }
+
+export async function updateWorkoutLog(
+  token: string,
+  payload: { program_id: string; workout_name: string; date: string; duration: number; member_name?: string }
+) {
+  return apiRequest("/workout-logs", {
+    method: "PUT",
+    token,
+    body: payload
+  });
+}
