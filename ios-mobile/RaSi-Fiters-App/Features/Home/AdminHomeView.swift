@@ -1467,6 +1467,8 @@ private struct DailyHealthEditSheet: View {
             }
             .padding(20)
         }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
         .alert("Unable to save", isPresented: $showErrorAlert) {
             Button("OK") { showErrorAlert = false }
         } message: {
@@ -1585,6 +1587,8 @@ private struct WorkoutLogEditSheet: View {
             }
             .padding(20)
         }
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
         .alert("Unable to save", isPresented: $showErrorAlert) {
             Button("OK") { showErrorAlert = false }
         } message: {
