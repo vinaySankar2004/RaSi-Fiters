@@ -61,7 +61,7 @@ router.get("/", authenticateToken, async (req, res) => {
                 id: customWorkout.id,
                 workout_name: customWorkout.workout_name,
                 source: "custom",
-                is_hidden: false,
+                is_hidden: !!customWorkout.is_hidden,
                 library_workout_id: null
             });
         }
