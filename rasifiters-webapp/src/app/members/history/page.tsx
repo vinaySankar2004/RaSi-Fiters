@@ -3,13 +3,14 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { loadActiveProgram } from "@/lib/storage";
 import { fetchMemberHistory } from "@/lib/api/members";
 import { BackButton } from "@/components/BackButton";
+import { useClientSearchParams } from "@/lib/use-client-search-params";
 
 const PERIODS = [
   { key: "week", label: "W" },
@@ -20,7 +21,7 @@ const PERIODS = [
 
 export default function MemberHistoryPage() {
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useClientSearchParams();
   const memberId = params.get("memberId") ?? "";
   const memberName = params.get("name") ?? "Member";
   const { session, isBootstrapping } = useAuth();

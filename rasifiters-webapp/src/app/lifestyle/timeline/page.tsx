@@ -3,13 +3,14 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { loadActiveProgram } from "@/lib/storage";
 import { fetchHealthTimeline } from "@/lib/api/lifestyle";
 import { BackButton } from "@/components/BackButton";
+import { useClientSearchParams } from "@/lib/use-client-search-params";
 
 type PeriodKey = "week" | "month" | "year" | "program";
 
@@ -22,7 +23,7 @@ const PERIODS: { key: PeriodKey; label: string }[] = [
 
 export default function LifestyleTimelinePage() {
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useClientSearchParams();
   const memberIdParam = params.get("memberId");
   const { session, isBootstrapping } = useAuth();
   const program = loadActiveProgram();

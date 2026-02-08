@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { BrandMark } from "@/components/BrandMark";
@@ -11,10 +11,11 @@ import { login } from "@/lib/api/auth";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { decodeJwtPayload, resolveGlobalRole, type DecodedAuthToken } from "@/lib/auth/jwt";
 import { PRIVACY_POLICY_URL } from "@/lib/config";
+import { useClientSearchParams } from "@/lib/use-client-search-params";
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useClientSearchParams();
   const { setSession } = useAuth();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");

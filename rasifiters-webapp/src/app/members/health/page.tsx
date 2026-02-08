@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { loadActiveProgram } from "@/lib/storage";
@@ -12,6 +12,7 @@ import { deleteDailyHealthLog, updateDailyHealthLog } from "@/lib/api/logs";
 import { Select } from "@/components/Select";
 import { formatShortDate } from "@/lib/format";
 import { BackButton } from "@/components/BackButton";
+import { useClientSearchParams } from "@/lib/use-client-search-params";
 
 const SORT_FIELDS = [
   { value: "date", label: "Date" },
@@ -31,7 +32,7 @@ const DIET_OPTIONS = ["", "1", "2", "3", "4", "5"].map((value) => ({
 
 export default function MemberHealthPage() {
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useClientSearchParams();
   const memberId = params.get("memberId") ?? "";
   const memberName = params.get("name") ?? "Member";
   const { session, isBootstrapping } = useAuth();

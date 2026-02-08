@@ -3,16 +3,17 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { loadActiveProgram } from "@/lib/storage";
 import { fetchMemberStreaks } from "@/lib/api/members";
 import { BackButton } from "@/components/BackButton";
+import { useClientSearchParams } from "@/lib/use-client-search-params";
 
 export default function MemberStreaksPage() {
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useClientSearchParams();
   const memberId = params.get("memberId") ?? "";
   const memberName = params.get("name") ?? "Member";
   const { session, isBootstrapping } = useAuth();

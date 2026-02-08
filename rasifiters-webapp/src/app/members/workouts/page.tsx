@@ -3,7 +3,7 @@
 export const dynamic = "force-dynamic";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { loadActiveProgram } from "@/lib/storage";
@@ -11,6 +11,7 @@ import { fetchMemberRecentWorkouts, type MemberRecentItem } from "@/lib/api/memb
 import { deleteWorkoutLog } from "@/lib/api/logs";
 import { Select } from "@/components/Select";
 import { BackButton } from "@/components/BackButton";
+import { useClientSearchParams } from "@/lib/use-client-search-params";
 
 const SORT_FIELDS = [
   { value: "date", label: "Date" },
@@ -25,7 +26,7 @@ const SORT_DIRS = [
 
 export default function MemberWorkoutsPage() {
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useClientSearchParams();
   const memberId = params.get("memberId") ?? "";
   const memberName = params.get("name") ?? "Member";
   const { session, isBootstrapping } = useAuth();
