@@ -24,7 +24,10 @@ export default function SplashPage() {
     setCtaVisible(false);
     setHeadlineComplete(false);
 
-    const typeText = async (text: string, setter: (value: string) => void) => {
+    const typeText = async (
+      text: string,
+      setter: React.Dispatch<React.SetStateAction<string>>
+    ) => {
       for (const char of text) {
         if (!isMounted) return;
         setter((prev) => prev + char);
