@@ -6,7 +6,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { loadActiveProgram } from "@/lib/storage";
-import { fetchProgramMembers, fetchWorkouts } from "@/lib/api/programs";
+import { fetchProgramMembers } from "@/lib/api/programs";
+import { fetchProgramWorkouts } from "@/lib/api/program-workouts";
 import {
   fetchActivityTimeline,
   fetchAnalyticsSummary,
@@ -605,9 +606,9 @@ function LogWorkoutForm({
     const loadLookups = async () => {
       if (!token || !programId) return;
       const membersData = await fetchProgramMembers(token, programId);
-      const workoutsData = await fetchWorkouts(token);
+      const workoutsData = await fetchProgramWorkouts(token, programId);
       setMembers(membersData);
-      setWorkouts(workoutsData);
+      setWorkouts(workoutsData.filter((workout) => !workout.is_hidden));
       if (!canSelectAnyMember && userId) {
         setMemberId(userId);
       }

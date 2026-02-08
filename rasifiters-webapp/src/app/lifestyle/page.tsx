@@ -40,9 +40,12 @@ export default function LifestylePage() {
   const programId = program?.id ?? "";
   const loggedInUserId = session?.user.id;
 
-  const isGlobalAdmin = session?.user.globalRole === "global_admin";
-  const isProgramAdmin = program?.my_role === "admin" || isGlobalAdmin;
+  const globalRole = session?.user.globalRole ?? "standard";
+  const programRole = program?.my_role ?? "member";
+  const isGlobalAdmin = globalRole === "global_admin";
+  const isProgramAdmin = programRole === "admin" || isGlobalAdmin;
   const canViewAs = isProgramAdmin;
+  const canAddWorkouts = isGlobalAdmin || (globalRole === "standard" && programRole === "admin");
 
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const [adminSelectedMember, setAdminSelectedMember] = useState<Member | null>(null);
@@ -181,14 +184,15 @@ export default function LifestylePage() {
             <h1 className="text-3xl font-bold text-rf-text">Lifestyle</h1>
             <p className="mt-1 text-sm font-semibold text-rf-text-muted">{program?.name ?? "Program"}</p>
           </div>
-          {!canViewAs && (
+          {!!programId && (
             <button
               type="button"
               onClick={() => router.push("/lifestyle/workouts")}
-              className="ml-auto flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-lg font-semibold text-black shadow-lg"
-              aria-label="View workout types"
+              className="ml-auto inline-flex items-center gap-2 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 px-4 py-2 text-xs font-semibold text-black shadow-lg"
+              aria-label={canAddWorkouts ? "View and add workout types" : "View workout types"}
             >
-              <DumbbellIcon className="h-6 w-6 text-black" />
+              <DumbbellIcon className="h-5 w-5 text-black" />
+              <span>{canAddWorkouts ? "Manage workouts" : "View workouts"}</span>
             </button>
           )}
         </header>

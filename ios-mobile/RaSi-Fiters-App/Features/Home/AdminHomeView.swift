@@ -4306,9 +4306,9 @@ private struct WorkoutTypesHeader: View {
             Spacer()
 
             NavigationLink {
-                AddWorkoutTypeDetailView()
+                ViewWorkoutTypesListView()
             } label: {
-                GlassButton(icon: "plus")
+                GlassButton(icon: "dumbbell")
             }
         }
     }
@@ -7928,114 +7928,6 @@ private struct InviteMemberView: View {
     }
 }
 
-private struct AddWorkoutTypeDetailView: View {
-    @EnvironmentObject var programContext: ProgramContext
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var workoutName: String = ""
-    @State private var isSaving = false
-    @State private var errorMessage: String?
-    @State private var successMessage: String?
-    @State private var showSuccessAlert: Bool = false
-
-    private var isFormValid: Bool {
-        !workoutName.trimmingCharacters(in: .whitespaces).isEmpty &&
-        programContext.programId != nil
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                header
-                formFields
-
-                if let errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.appRed)
-                        .font(.footnote.weight(.semibold))
-                }
-                if let successMessage {
-                    Text(successMessage)
-                        .foregroundColor(.green)
-                        .font(.footnote.weight(.semibold))
-                }
-
-                Button(action: { Task { await save() } }) {
-                    if isSaving {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text("Add workout")
-                            .font(.headline.weight(.semibold))
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(isFormValid ? Color.appOrange : Color(.systemGray3))
-                .foregroundColor(.black)
-                .cornerRadius(14)
-                .disabled(!isFormValid || isSaving)
-            }
-            .padding(20)
-        }
-        .adaptiveBackground(topLeading: true)
-        .alert("Workout added", isPresented: $showSuccessAlert) {
-            Button("OK") {
-                dismiss()
-            }
-        } message: {
-            Text(successMessage ?? "Success")
-        }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Add workout")
-                .font(.title2.weight(.bold))
-                .foregroundColor(Color(.label))
-            Text("Create the workout type for this program.")
-                .font(.subheadline)
-                .foregroundColor(Color(.secondaryLabel))
-        }
-    }
-
-    private var formFields: some View {
-        VStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Workout name")
-                    .font(.subheadline.weight(.semibold))
-                TextField("e.g. Elliptical", text: $workoutName)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.words)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-            }
-        }
-    }
-
-    private func save() async {
-        guard let token = programContext.authToken else { return }
-
-        isSaving = true
-        errorMessage = nil
-        successMessage = nil
-
-        do {
-            let created = try await APIClient.shared.addWorkoutType(
-                token: token,
-                workoutName: workoutName.trimmingCharacters(in: .whitespacesAndNewlines)
-            )
-            await programContext.loadLookupData()
-            successMessage = "Workout added: \(created.workout_name)"
-            showSuccessAlert = true
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-
-        isSaving = false
-    }
-}
-
 private struct AddWorkoutDetailView: View {
     @EnvironmentObject var programContext: ProgramContext
     @State private var selectedMember: APIClient.MemberDTO?
@@ -8115,9 +8007,9 @@ private struct AddWorkoutDetailView: View {
                 placeholder: "Select workout",
                 selection: Binding(
                     get: { selectedWorkout?.workout_name ?? "" },
-                    set: { name in selectedWorkout = programContext.workouts.first { $0.workout_name == name } }
+                    set: { name in selectWorkout(named: name) }
                 ),
-                options: programContext.workouts.map { $0.workout_name }
+                options: workoutOptions
             )
 
             dateField
@@ -8131,6 +8023,23 @@ private struct AddWorkoutDetailView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
             }
+        }
+    }
+
+    private var workoutOptions: [String] {
+        if programContext.programId != nil {
+            return programContext.programWorkouts
+                .filter { !$0.is_hidden }
+                .map { $0.workout_name }
+        }
+        return programContext.workouts.map { $0.workout_name }
+    }
+
+    private func selectWorkout(named name: String) {
+        if programContext.programId != nil {
+            selectedWorkout = APIClient.WorkoutDTO(workout_name: name)
+        } else {
+            selectedWorkout = programContext.workouts.first { $0.workout_name == name }
         }
     }
 
@@ -8256,6 +8165,10 @@ private struct AddWorkoutDetailView: View {
         if programContext.members.isEmpty || programContext.workouts.isEmpty || needsProgramRefresh {
             await programContext.loadLookupData()
             print("[AddWorkout] After loadLookupData - members: \(programContext.members.count), workouts: \(programContext.workouts.count)")
+        }
+        if programContext.programId != nil {
+            await programContext.loadProgramWorkouts()
+            print("[AddWorkout] After loadProgramWorkouts - programWorkouts: \(programContext.programWorkouts.count)")
         }
         // Ensure membership details (including program role) are loaded
         if programContext.membershipDetails.isEmpty || needsProgramRefresh {

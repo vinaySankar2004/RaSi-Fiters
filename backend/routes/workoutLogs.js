@@ -1,5 +1,5 @@
 const express = require("express");
-const { WorkoutLog, Member, ProgramWorkout, ProgramMembership } = require("../models/index");
+const { WorkoutLog, Member, ProgramWorkout, ProgramMembership, Workout } = require("../models/index");
 const { Op } = require("sequelize");
 const { authenticateToken, isAdmin, canModifyLog } = require("../middleware/auth");
 const router = express.Router();
@@ -124,15 +124,48 @@ router.post("/", authenticateToken, async (req, res) => {
         }
 
         const workoutName = workout_name.trim();
-        let programWorkout = await ProgramWorkout.findOne({
-            where: { program_id, workout_name: workoutName }
+        let programWorkout = null;
+
+        // If the workout exists in the global library, prefer linking to it
+        const libraryWorkout = await Workout.findOne({
+            where: { workout_name: workoutName }
         });
-        if (!programWorkout) {
-            programWorkout = await ProgramWorkout.create({
-                program_id,
-                workout_name: workoutName,
-                library_workout_id: null
+
+        if (libraryWorkout) {
+            programWorkout = await ProgramWorkout.findOne({
+                where: { program_id, library_workout_id: libraryWorkout.id }
             });
+
+            if (!programWorkout) {
+                // If a custom workout with the same name exists (likely created by a prior bug),
+                // upgrade it to point at the global library workout to prevent duplicates.
+                const existingCustom = await ProgramWorkout.findOne({
+                    where: { program_id, workout_name: workoutName, library_workout_id: null }
+                });
+
+                if (existingCustom) {
+                    programWorkout = await existingCustom.update({
+                        library_workout_id: libraryWorkout.id
+                    });
+                } else {
+                    programWorkout = await ProgramWorkout.create({
+                        program_id,
+                        workout_name: libraryWorkout.workout_name,
+                        library_workout_id: libraryWorkout.id
+                    });
+                }
+            }
+        } else {
+            programWorkout = await ProgramWorkout.findOne({
+                where: { program_id, workout_name: workoutName }
+            });
+            if (!programWorkout) {
+                programWorkout = await ProgramWorkout.create({
+                    program_id,
+                    workout_name: workoutName,
+                    library_workout_id: null
+                });
+            }
         }
 
         // Create the workout log

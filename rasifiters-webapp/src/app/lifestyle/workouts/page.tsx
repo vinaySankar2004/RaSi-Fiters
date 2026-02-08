@@ -24,8 +24,9 @@ export default function LifestyleWorkoutsPage() {
   const programId = program?.id ?? "";
   const queryClient = useQueryClient();
 
-  const isGlobalAdmin = session?.user.globalRole === "global_admin";
-  const canManage = program?.my_role === "admin" || isGlobalAdmin;
+  const globalRole = session?.user.globalRole ?? "standard";
+  const isGlobalAdmin = globalRole === "global_admin";
+  const canManage = isGlobalAdmin || (globalRole === "standard" && program?.my_role === "admin");
 
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);

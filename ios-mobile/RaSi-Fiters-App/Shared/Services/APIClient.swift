@@ -369,18 +369,6 @@ final class APIClient {
         return try JSONDecoder().decode([WorkoutDTO].self, from: data)
     }
 
-    func addWorkoutType(token: String, workoutName: String) async throws -> WorkoutDTO {
-        var request = URLRequest(url: baseURL.appendingPathComponent("workouts/mobile"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        let body = ["workout_name": workoutName]
-        request.httpBody = try JSONEncoder().encode(body)
-        let data = try await data(for: request)
-        return try JSONDecoder().decode(WorkoutDTO.self, from: data)
-    }
-
     // MARK: - Program Workouts (per-program workout management)
 
     func fetchProgramWorkouts(token: String, programId: String) async throws -> [ProgramWorkoutDTO] {
@@ -1219,31 +1207,6 @@ final class APIClient {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         let data = try await data(for: request)
         return try JSONDecoder().decode(MemberDTO.self, from: data)
-    }
-
-    // MARK: - Workout Type Management
-
-    func updateWorkoutType(token: String, oldName: String, newName: String) async throws -> WorkoutDTO {
-        let encodedName = oldName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? oldName
-        var request = URLRequest(url: baseURL.appendingPathComponent("workouts/\(encodedName)"))
-        request.httpMethod = "PUT"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        
-        let body = ["workout_name": newName]
-        request.httpBody = try JSONEncoder().encode(body)
-        let data = try await data(for: request)
-        return try JSONDecoder().decode(WorkoutDTO.self, from: data)
-    }
-
-    func deleteWorkoutType(token: String, workoutName: String) async throws {
-        let encodedName = workoutName.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? workoutName
-        var request = URLRequest(url: baseURL.appendingPathComponent("workouts/\(encodedName)"))
-        request.httpMethod = "DELETE"
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        _ = try await data(for: request)
     }
 
     // MARK: - Program Invitations

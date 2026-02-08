@@ -985,38 +985,6 @@ final class ProgramContext: ObservableObject {
         return response.message
     }
 
-    // MARK: - Workout Type Management
-
-    @MainActor
-    func addWorkoutType(name: String) async throws {
-        guard let token = authToken, !token.isEmpty else {
-            throw APIError(message: "No auth token")
-        }
-
-        _ = try await APIClient.shared.addWorkoutType(token: token, workoutName: name)
-        await loadLookupData()
-    }
-
-    @MainActor
-    func updateWorkoutType(oldName: String, newName: String) async throws {
-        guard let token = authToken, !token.isEmpty else {
-            throw APIError(message: "No auth token")
-        }
-
-        _ = try await APIClient.shared.updateWorkoutType(token: token, oldName: oldName, newName: newName)
-        await loadLookupData()
-    }
-
-    @MainActor
-    func deleteWorkoutType(name: String) async throws {
-        guard let token = authToken, !token.isEmpty else {
-            throw APIError(message: "No auth token")
-        }
-
-        try await APIClient.shared.deleteWorkoutType(token: token, workoutName: name)
-        await loadLookupData()
-    }
-
     // MARK: - Program Workout Management (per-program)
 
     @MainActor
