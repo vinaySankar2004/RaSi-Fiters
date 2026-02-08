@@ -83,7 +83,7 @@ export default function SplashPage() {
           >
             <Link
               href="/login"
-              className="button-primary inline-flex min-w-[220px] items-center justify-center rounded-full px-10 py-3 text-base font-semibold"
+              className="button-primary button-primary--dark-white inline-flex min-w-[220px] items-center justify-center rounded-full px-10 py-3 text-base font-semibold"
             >
               Sign in
             </Link>

@@ -344,6 +344,16 @@ select:-webkit-autofill:focus {
   box-shadow: 0 12px 30px rgba(17, 19, 24, 0.2);
 }
 
+.button-primary--dark-white {
+  background: #111318;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .button-primary--dark-white {
+  background: #ffffff;
+  color: #0b0c0e;
+}
+
 .button-primary:disabled {
   opacity: 0.5;
   cursor: not-allowed;

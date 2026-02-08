@@ -132,7 +132,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={!canSubmit || isLoading}
-            className="button-primary mt-2 inline-flex min-h-[50px] items-center justify-center rounded-full px-8 text-base font-semibold"
+            className="button-primary button-primary--dark-white mt-2 inline-flex min-h-[50px] items-center justify-center rounded-full px-8 text-base font-semibold"
           >
             {isLoading ? "Signing in..." : "Login"}
           </button>

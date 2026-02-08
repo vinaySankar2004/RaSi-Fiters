@@ -244,7 +244,7 @@ export default function ProgramsPage() {
       </div>
 
       <Modal open={showActions} onClose={() => setShowActions(false)}>
-        <div className="modal-surface w-full max-w-2xl rounded-3xl p-6">
+        <div className="modal-surface flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-3xl p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-rf-text">Program Actions</h2>
             <button
@@ -268,7 +268,7 @@ export default function ProgramsPage() {
             />
           </div>
 
-          <div className="mt-6">
+          <div className="mt-6 flex-1 overflow-y-auto pr-1">
             {actionsTab === "invites" ? (
               <InvitesTab
                 invites={invitesQuery.data ?? []}

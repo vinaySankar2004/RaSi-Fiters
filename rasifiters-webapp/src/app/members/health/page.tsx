@@ -354,7 +354,7 @@ export default function MemberHealthPage() {
               <button
                 type="button"
                 onClick={submitEdit}
-                disabled={updateMutation.isLoading}
+                disabled={updateMutation.isPending}
                 className="button-primary rounded-full px-5 py-2 text-xs font-semibold"
               >
                 Save
