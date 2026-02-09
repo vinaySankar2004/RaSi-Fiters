@@ -3,9 +3,9 @@
 Scope: endpoints for the mobile apps only. No functional/UI changes—this documents how to use existing routes (plus the new `/auth/login/app` alias) in a single-intent, server-shaped way so the client does minimal data manipulation.
 
 ## Login
-- `POST /api/auth/login/app` (alias: `/api/auth/login/global`)
-- Request: `identifier`, `password`, optional `device_id`, `push_token`
-- Response: `token`, `refresh_token`, `member_id`, `username`, `member_name`, `global_role`, `message`
+- `POST /api/auth/login/app` (alias: `/api/auth/login/global`; legacy `/api/auth/login` untouched)
+- Request: `username`, `password`, optional `device_id`, `push_token`
+- Response: `token`, `refresh_token`, `user {id, username, member_name, global_role, date_joined}`, `message`
 
 ## Post-login bootstrap
 - `GET /api/app/bootstrap` (to add; aggregates existing data)
