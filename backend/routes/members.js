@@ -1,8 +1,18 @@
 const express = require("express");
-const { Member, WorkoutLog, Program, ProgramInvite, ProgramMembership } = require("../models/index");
+const { Op } = require("sequelize");
+const {
+    Member,
+    MemberEmail,
+    WorkoutLog,
+    Program,
+    ProgramInvite,
+    ProgramMembership,
+    Notification
+} = require("../models/index");
 const { sequelize } = require("../config/database");
 const { authenticateToken, isAdmin } = require("../middleware/auth");
 const { handleMemberExit } = require("../utils/programMemberships");
+const { createNotification, getActiveProgramMemberIds } = require("../utils/notifications");
 const router = express.Router();
 
 // GET all members - exclude global_admin users
@@ -165,11 +175,30 @@ router.delete("/:id", authenticateToken, isAdmin, async (req, res) => {
             return res.status(403).json({ error: "Cannot delete global admin account." });
         }
 
-        // Clear invited_by references for any invites sent by this member
-        await ProgramInvite.update(
-            { invited_by: null },
-            { where: { invited_by: member.id }, transaction }
-        );
+        // Delete any program invites sent by or targeting this member
+        const memberEmails = await MemberEmail.findAll({
+            where: { member_id: member.id },
+            attributes: ["email"],
+            transaction
+        });
+        const emailList = memberEmails.map((row) => row.email).filter(Boolean);
+        const inviteFilters = [
+            { invited_by: member.id },
+            { invited_username: member.username }
+        ];
+        if (emailList.length > 0) {
+            inviteFilters.push({ invited_email: { [Op.in]: emailList } });
+        }
+        await ProgramInvite.destroy({
+            where: { [Op.or]: inviteFilters },
+            transaction
+        });
+
+        // Delete notifications where this member is the actor (PII in title/body)
+        await Notification.destroy({
+            where: { actor_member_id: member.id },
+            transaction
+        });
 
         // Ensure programs remain valid after this member exits
         const activeMemberships = await ProgramMembership.findAll({
@@ -193,12 +222,31 @@ router.delete("/:id", authenticateToken, isAdmin, async (req, res) => {
         ]);
 
         for (const programId of programIds) {
-            await handleMemberExit({
+            const exitResult = await handleMemberExit({
                 programId,
                 exitingMemberId: member.id,
                 transaction,
-                updateCreatedBy: true
+                updateCreatedBy: true,
+                notificationActorId: null,
+                includeExitingMemberInRecipients: false
             });
+
+            if (!exitResult.programDeleted) {
+                const remainingMemberIds = await getActiveProgramMemberIds(programId, transaction);
+                const recipients = remainingMemberIds.filter((id) => id !== member.id);
+                if (recipients.length > 0) {
+                    const program = await Program.findByPk(programId, { transaction });
+                    await createNotification({
+                        type: "program.member_left",
+                        programId,
+                        actorMemberId: null,
+                        title: "Member left",
+                        body: `A member left ${program?.name || "the program"}.`,
+                        recipientIds: recipients,
+                        transaction
+                    });
+                }
+            }
         }
 
         // Delete the member

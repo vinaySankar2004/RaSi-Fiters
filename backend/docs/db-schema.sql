@@ -132,8 +132,8 @@ CREATE TABLE programs (
     status      TEXT NOT NULL DEFAULT 'planned'
         CHECK (status IN ('planned', 'active', 'completed')),
     description TEXT,
-    created_by  UUID NOT NULL
-        REFERENCES members(id),
+    created_by  UUID
+        REFERENCES members(id) ON DELETE SET NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     is_deleted  BOOLEAN NOT NULL DEFAULT false

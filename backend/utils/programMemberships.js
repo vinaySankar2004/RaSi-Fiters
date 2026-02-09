@@ -39,8 +39,11 @@ const handleMemberExit = async ({
     programId,
     exitingMemberId,
     transaction,
-    updateCreatedBy = false
+    updateCreatedBy = false,
+    notificationActorId,
+    includeExitingMemberInRecipients = true
 }) => {
+    const actorId = notificationActorId !== undefined ? notificationActorId : exitingMemberId;
     const program = await Program.findByPk(programId, { transaction });
     if (!program || program.is_deleted) {
         return { programDeleted: false };
@@ -56,17 +59,21 @@ const handleMemberExit = async ({
     });
 
     if (remainingMembersCount === 0) {
-        await program.update(
-            { is_deleted: true, updated_at: new Date() },
-            { transaction }
-        );
+        const updatePayload = { is_deleted: true, updated_at: new Date() };
+        if (updateCreatedBy && program.created_by === exitingMemberId) {
+            updatePayload.created_by = null;
+        }
+        await program.update(updatePayload, { transaction });
         const activeMemberIds = await getActiveProgramMemberIds(programId, transaction);
-        const recipients = Array.from(new Set([...activeMemberIds, exitingMemberId].filter(Boolean)));
+        const baseRecipients = includeExitingMemberInRecipients
+            ? [...activeMemberIds, exitingMemberId]
+            : activeMemberIds.filter((id) => id !== exitingMemberId);
+        const recipients = Array.from(new Set(baseRecipients.filter(Boolean)));
         if (recipients.length > 0) {
             await createNotification({
                 type: "program.deleted",
                 programId,
-                actorMemberId: exitingMemberId || null,
+                actorMemberId: actorId || null,
                 title: "Program deleted",
                 body: `${program.name} was deleted because no members remain.`,
                 recipientIds: recipients,
@@ -103,7 +110,7 @@ const handleMemberExit = async ({
         await createNotification({
             type: "program.role_changed",
             programId,
-            actorMemberId: exitingMemberId || null,
+            actorMemberId: actorId || null,
             title: "Role updated",
             body: `Your role in ${program.name} is now admin.`,
             recipientIds: [promotedMembership.member_id],
@@ -111,44 +118,27 @@ const handleMemberExit = async ({
         });
 
         const activeMemberIds = await getActiveProgramMemberIds(programId, transaction);
-        if (activeMemberIds.length > 0) {
+        const adminTransferRecipients = includeExitingMemberInRecipients
+            ? activeMemberIds
+            : activeMemberIds.filter((id) => id !== exitingMemberId);
+        if (adminTransferRecipients.length > 0) {
             await createNotification({
                 type: "program.admin_transferred",
                 programId,
                 actorMemberId: promotedMembership.member_id,
                 title: "New admin assigned",
                 body: `${promotedMembership.Member?.member_name || "A member"} is now an admin of ${program.name}.`,
-                recipientIds: activeMemberIds,
+                recipientIds: adminTransferRecipients,
                 transaction
             });
         }
     }
 
     if (updateCreatedBy && program.created_by === exitingMemberId) {
-        let replacementMembership = null;
-        if (remainingAdminsCount > 0) {
-            replacementMembership = await findOldestActiveMembership({
-                programId,
-                excludeMemberId: exitingMemberId,
-                role: "admin",
-                transaction
-            });
-        } else if (promotedMembership) {
-            replacementMembership = promotedMembership;
-        } else {
-            replacementMembership = await findOldestActiveMembership({
-                programId,
-                excludeMemberId: exitingMemberId,
-                transaction
-            });
-        }
-
-        if (replacementMembership) {
-            await program.update(
-                { created_by: replacementMembership.member_id, updated_at: new Date() },
-                { transaction }
-            );
-        }
+        await program.update(
+            { created_by: null, updated_at: new Date() },
+            { transaction }
+        );
     }
 
     return {

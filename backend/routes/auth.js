@@ -3,9 +3,20 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { sequelize } = require("../config/database");
-const { Member, RefreshToken, MemberCredential, MemberEmail, Program, ProgramMembership, ProgramInvite } = require("../models/index");
+const { Op } = require("sequelize");
+const {
+    Member,
+    RefreshToken,
+    MemberCredential,
+    MemberEmail,
+    Program,
+    ProgramMembership,
+    ProgramInvite,
+    Notification
+} = require("../models/index");
 const { authenticateToken } = require("../middleware/auth");
 const { handleMemberExit } = require("../utils/programMemberships");
+const { createNotification, getActiveProgramMemberIds } = require("../utils/notifications");
 
 const router = express.Router();
 
@@ -380,15 +391,34 @@ router.delete("/account", authenticateToken, async (req, res) => {
 
         console.log(`[delete-account] Starting account deletion for member: ${memberId}`);
 
-        // Step 1: Handle program_invites where invited_by = member_id (no CASCADE)
-        // Set invited_by to NULL for any invites this user sent
-        await ProgramInvite.update(
-            { invited_by: null },
-            { where: { invited_by: memberId }, transaction }
-        );
-        console.log(`[delete-account] Cleared invited_by references in program_invites`);
+        // Step 1: Delete any program invites sent by or targeting this member
+        const memberEmails = await MemberEmail.findAll({
+            where: { member_id: memberId },
+            attributes: ["email"],
+            transaction
+        });
+        const emailList = memberEmails.map((row) => row.email).filter(Boolean);
+        const inviteFilters = [
+            { invited_by: memberId },
+            { invited_username: member.username }
+        ];
+        if (emailList.length > 0) {
+            inviteFilters.push({ invited_email: { [Op.in]: emailList } });
+        }
+        await ProgramInvite.destroy({
+            where: { [Op.or]: inviteFilters },
+            transaction
+        });
+        console.log(`[delete-account] Deleted program_invites sent by or targeting member`);
 
-        // Step 2: Ensure programs remain valid after this member exits
+        // Step 2: Delete notifications where this member is the actor (PII in title/body)
+        await Notification.destroy({
+            where: { actor_member_id: memberId },
+            transaction
+        });
+        console.log(`[delete-account] Deleted notifications where member is actor`);
+
+        // Step 3: Ensure programs remain valid after this member exits
         const activeMemberships = await ProgramMembership.findAll({
             where: {
                 member_id: memberId,
@@ -414,7 +444,9 @@ router.delete("/account", authenticateToken, async (req, res) => {
                 programId,
                 exitingMemberId: memberId,
                 transaction,
-                updateCreatedBy: true
+                updateCreatedBy: true,
+                notificationActorId: null,
+                includeExitingMemberInRecipients: false
             });
 
             if (exitResult.programDeleted) {
@@ -422,9 +454,26 @@ router.delete("/account", authenticateToken, async (req, res) => {
             } else if (exitResult.newAdminMemberId) {
                 console.log(`[delete-account] Promoted member ${exitResult.newAdminMemberId} to admin for program ${programId}`);
             }
+
+            if (!exitResult.programDeleted) {
+                const remainingMemberIds = await getActiveProgramMemberIds(programId, transaction);
+                const recipients = remainingMemberIds.filter((id) => id !== memberId);
+                if (recipients.length > 0) {
+                    const program = await Program.findByPk(programId, { transaction });
+                    await createNotification({
+                        type: "program.member_left",
+                        programId,
+                        actorMemberId: null,
+                        title: "Member left",
+                        body: `A member left ${program?.name || "the program"}.`,
+                        recipientIds: recipients,
+                        transaction
+                    });
+                }
+            }
         }
 
-        // Step 3: Delete the member record
+        // Step 4: Delete the member record
         // CASCADE will handle:
         // - member_credentials
         // - member_emails

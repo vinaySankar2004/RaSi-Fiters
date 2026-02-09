@@ -31,7 +31,7 @@ const Program = sequelize.define("Program", {
     },
     created_by: {
         type: DataTypes.UUID,
-        allowNull: false
+        allowNull: true
     },
     is_deleted: {
         type: DataTypes.BOOLEAN,
