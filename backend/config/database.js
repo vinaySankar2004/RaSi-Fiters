@@ -9,12 +9,6 @@ const sequelize = new Sequelize(process.env.DB_URL, {
             rejectUnauthorized: false, // Allow self-signed certificates
         },
     },
-    pool: {
-        max: 10,
-        min: 0,
-        idle: 10000,
-        acquire: 20000
-    },
     logging: true,
 });
 
