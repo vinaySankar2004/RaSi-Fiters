@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { clearSession, loadSession, saveSession, type SessionState } from "@/lib/auth/session";
 import { clearActiveProgram } from "@/lib/storage";
-import { decodeJwtPayload, resolveGlobalRole, type DecodedAuthToken } from "@/lib/auth/jwt";
+import { decodeJwtPayload, isTokenExpired, resolveGlobalRole, type DecodedAuthToken } from "@/lib/auth/jwt";
 
 type AuthContextValue = {
   session: SessionState | null;
@@ -21,14 +21,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const stored = loadSession();
     if (stored) {
-      const hydrated = hydrateSessionFromToken(stored);
-      setSessionState(hydrated);
-      saveSession(hydrated);
+      if (isTokenExpired(stored.token)) {
+        clearSession();
+      } else {
+        const hydrated = hydrateSessionFromToken(stored);
+        setSessionState(hydrated);
+        saveSession(hydrated);
+      }
     }
     setIsBootstrapping(false);
   }, []);
 
   const setSession = (next: SessionState | null) => {
+    if (next?.token && isTokenExpired(next.token)) {
+      clearSession();
+      setSessionState(null);
+      return;
+    }
     const hydrated = next ? hydrateSessionFromToken(next) : null;
     const currentUserId = session?.user.id;
     const nextUserId = hydrated?.user.id;

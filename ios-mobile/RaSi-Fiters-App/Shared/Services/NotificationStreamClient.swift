@@ -50,7 +50,7 @@ final class NotificationStreamClient: NSObject {
     private func processBuffer() {
         while let range = buffer.range(of: "\n\n") {
             let rawEvent = String(buffer[..<range.lowerBound])
-            buffer.removeSubrange(...range.upperBound)
+            buffer.removeSubrange(buffer.startIndex..<range.upperBound)
 
             var dataLines: [String] = []
             for line in rawEvent.split(separator: "\n") {

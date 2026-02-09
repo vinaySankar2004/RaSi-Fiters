@@ -326,11 +326,14 @@ router.post("/enroll", authenticateToken, async (req, res) => {
 
 // PUT /program-memberships : update membership (role, is_active, joined_at)
 router.put("/", authenticateToken, async (req, res) => {
+    const transaction = await sequelize.transaction();
+
     try {
         const { program_id, member_id, role, status, is_active, joined_at } = req.body;
         const requester = req.user;
 
         if (!program_id || !member_id) {
+            await transaction.rollback();
             return res.status(400).json({ error: "program_id and member_id are required." });
         }
 
@@ -344,20 +347,24 @@ router.put("/", authenticateToken, async (req, res) => {
                     member_id: requester?.id,
                     role: "admin",
                     status: "active"
-                }
+                },
+                transaction
             });
             isProgramAdmin = !!pm;
         }
         if (!isGlobalAdmin && !isProgramAdmin && !isSelf) {
+            await transaction.rollback();
             return res.status(403).json({ error: "Admin privileges required for this program." });
         }
 
         // Find the membership
         const membership = await ProgramMembership.findOne({
-            where: { program_id, member_id }
+            where: { program_id, member_id },
+            transaction
         });
 
         if (!membership) {
+            await transaction.rollback();
             return res.status(404).json({ error: "Membership not found." });
         }
 
@@ -365,9 +372,11 @@ router.put("/", authenticateToken, async (req, res) => {
 
         if (!isAdmin && isSelf) {
             if (role !== undefined || joined_at !== undefined) {
+                await transaction.rollback();
                 return res.status(403).json({ error: "Only status updates are allowed." });
             }
             if (!["invited", "requested"].includes(membership.status)) {
+                await transaction.rollback();
                 return res.status(403).json({ error: "Cannot update membership status." });
             }
         }
@@ -384,6 +393,7 @@ router.put("/", authenticateToken, async (req, res) => {
         }
         if (!isAdmin && isSelf) {
             if (!["active", "removed"].includes(resolvedStatus || "")) {
+                await transaction.rollback();
                 return res.status(400).json({ error: "Invalid status update." });
             }
         }
@@ -409,29 +419,34 @@ router.put("/", authenticateToken, async (req, res) => {
                     role: "admin",
                     status: "active",
                     member_id: { [Op.ne]: member_id }
-                }
+                },
+                transaction
             });
             if (remainingAdmins < 1) {
+                await transaction.rollback();
                 return res.status(400).json({ error: "Cannot remove the last admin from the program." });
             }
         }
 
-        await membership.update(updateData);
+        await membership.update(updateData, { transaction });
 
         if (previousRole !== nextRole && nextStatus === "active") {
-            const program = await Program.findByPk(program_id);
+            const program = await Program.findByPk(program_id, { transaction });
             await createNotification({
                 type: "program.role_changed",
                 programId: program_id,
                 actorMemberId: requester?.id || null,
                 title: "Role updated",
                 body: `Your role in ${program?.name || "the program"} is now ${nextRole}.`,
-                recipientIds: [member_id]
+                recipientIds: [member_id],
+                transaction
             });
         }
 
         // Fetch member info for response
-        const member = await Member.findByPk(member_id);
+        const member = await Member.findByPk(member_id, { transaction });
+
+        await transaction.commit();
 
         res.json({
             program_id: membership.program_id,
@@ -444,6 +459,7 @@ router.put("/", authenticateToken, async (req, res) => {
             message: "Membership updated successfully."
         });
     } catch (err) {
+        await transaction.rollback();
         console.error("Error updating membership:", err);
         res.status(500).json({ error: "Failed to update membership." });
     }

@@ -2,7 +2,7 @@ import SwiftUI
 
 struct NotificationModalView: View {
     let title: String
-    let body: String
+    let message: String
     let onAcknowledge: () -> Void
 
     var body: some View {
@@ -16,7 +16,7 @@ struct NotificationModalView: View {
                     .foregroundColor(Color(.label))
                     .multilineTextAlignment(.center)
 
-                Text(body)
+                Text(message)
                     .font(.subheadline)
                     .foregroundColor(Color(.secondaryLabel))
                     .multilineTextAlignment(.center)
@@ -46,7 +46,7 @@ struct NotificationModalView: View {
 #Preview {
     NotificationModalView(
         title: "Program updated",
-        body: "RaSi Winter Reset details were updated.",
+        message: "RaSi Winter Reset details were updated.",
         onAcknowledge: {}
     )
 }

@@ -4,6 +4,7 @@ export type DecodedAuthToken = {
   member_name?: string;
   global_role?: string;
   role?: string;
+  exp?: number;
 };
 
 export function decodeJwtPayload<T = DecodedAuthToken>(token: string): T | null {
@@ -22,6 +23,12 @@ export function decodeJwtPayload<T = DecodedAuthToken>(token: string): T | null 
   } catch {
     return null;
   }
+}
+
+export function isTokenExpired(token: string) {
+  const decoded = decodeJwtPayload<DecodedAuthToken>(token);
+  if (!decoded?.exp) return false;
+  return decoded.exp * 1000 <= Date.now();
 }
 
 export function resolveGlobalRole({

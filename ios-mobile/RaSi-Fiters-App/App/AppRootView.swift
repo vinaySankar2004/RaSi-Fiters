@@ -23,7 +23,7 @@ struct AppRootView: View {
             if let notification = programContext.notificationQueue.first {
                 NotificationModalView(
                     title: notification.title,
-                    body: notification.body
+                    message: notification.body
                 ) {
                     Task { @MainActor in
                         await programContext.acknowledgeNotification(notification)
@@ -34,6 +34,11 @@ struct AppRootView: View {
         .environmentObject(programContext)
         .task {
             await programContext.refreshSessionIfNeeded()
+            if programContext.authToken != nil {
+                await MainActor.run {
+                    programContext.startNotificationStreamIfNeeded()
+                }
+            }
         }
         .onChange(of: programContext.authToken) { _ in
             Task { @MainActor in

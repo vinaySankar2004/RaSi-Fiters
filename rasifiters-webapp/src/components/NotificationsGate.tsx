@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { API_BASE_URL } from "@/lib/config";
 import {
@@ -18,13 +19,18 @@ const sortByCreatedAt = (items: NotificationItem[]) =>
   });
 
 export function NotificationsGate() {
-  const { session } = useAuth();
+  const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
+  const pathname = usePathname();
   const [queue, setQueue] = useState<NotificationItem[]>([]);
   const idsRef = useRef(new Set<string>());
   const sourceRef = useRef<EventSource | null>(null);
 
   const currentNotification = queue[0];
+  const isAuthRoute = ["/login", "/create-account", "/splash"].some((route) =>
+    pathname?.startsWith(route)
+  );
+  const shouldRun = !!token && !isBootstrapping && !isAuthRoute;
 
   const addNotifications = (incoming: NotificationItem[]) => {
     if (incoming.length === 0) return;
@@ -40,7 +46,7 @@ export function NotificationsGate() {
   };
 
   useEffect(() => {
-    if (!token) {
+    if (!shouldRun) {
       setQueue([]);
       idsRef.current.clear();
       return;
@@ -51,10 +57,10 @@ export function NotificationsGate() {
       .catch(() => {
         // Silent fail; will retry via stream or next navigation
       });
-  }, [token]);
+  }, [token, shouldRun]);
 
   useEffect(() => {
-    if (!token) {
+    if (!shouldRun) {
       if (sourceRef.current) {
         sourceRef.current.close();
         sourceRef.current = null;
@@ -87,10 +93,10 @@ export function NotificationsGate() {
       eventSource.close();
       sourceRef.current = null;
     };
-  }, [token]);
+  }, [token, shouldRun]);
 
   const handleAcknowledge = async () => {
-    if (!currentNotification || !token) return;
+    if (!currentNotification || !shouldRun) return;
     const notificationId = currentNotification.id;
     setQueue((prev) => prev.filter((item) => item.id !== notificationId));
     idsRef.current.delete(notificationId);
