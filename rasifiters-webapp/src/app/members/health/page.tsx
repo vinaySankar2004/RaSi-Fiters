@@ -206,12 +206,6 @@ export default function MemberHealthPage() {
           <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">Loading daily health logs...</div>
         )}
 
-        {healthQuery.isError && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-rf-danger">
-            {(healthQuery.error as Error).message}
-          </div>
-        )}
-
         {healthQuery.data && healthQuery.data.items.length === 0 && (
           <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">No daily health logs found.</div>
         )}

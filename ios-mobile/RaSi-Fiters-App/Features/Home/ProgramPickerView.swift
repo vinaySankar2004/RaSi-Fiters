@@ -36,13 +36,6 @@ struct ProgramPickerView: View {
                         .padding(.top, 12)
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-                } else if let errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.appRed)
-                        .font(.footnote.weight(.semibold))
-                        .padding(.top, 12)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
                 } else if programContext.programs.isEmpty {
                     emptyState
                         .listRowSeparator(.hidden)
@@ -819,7 +812,6 @@ private struct InvitesTabView: View {
     
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var successMessage: String?
     @State private var inviteToDecline: APIClient.PendingInviteDTO?
     @State private var showDeclineConfirmation = false
     @State private var blockFutureInvites = false
@@ -851,21 +843,6 @@ private struct InvitesTabView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 8)
-                    
-                    // Messages
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .foregroundColor(.appRed)
-                            .font(.footnote.weight(.semibold))
-                            .padding(.horizontal, 20)
-                    }
-                    
-                    if let successMessage {
-                        Text(successMessage)
-                            .foregroundColor(.appGreen)
-                            .font(.footnote.weight(.semibold))
-                            .padding(.horizontal, 20)
-                    }
                     
                     // Content
                     if isLoading {
@@ -994,6 +971,11 @@ private struct InvitesTabView: View {
                 }
             }
         }
+        .alert("Unable to update invitation", isPresented: .constant(errorMessage != nil)) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
     }
     
     private func refreshInvites() async {
@@ -1006,19 +988,16 @@ private struct InvitesTabView: View {
     private func respondToInvite(_ invite: APIClient.PendingInviteDTO, action: String, blockFuture: Bool = false) async {
         isLoading = true
         errorMessage = nil
-        successMessage = nil
         
         do {
-            let message = try await programContext.respondToInvite(
+            _ = try await programContext.respondToInvite(
                 inviteId: invite.invite_id,
                 action: action,
                 blockFuture: blockFuture
             )
-            successMessage = message
             
             // If accepted, trigger the callback to dismiss and refresh
             if action == "accept" {
-                try? await Task.sleep(nanoseconds: 500_000_000) // Brief delay to show success
                 onAccepted()
             }
         } catch {

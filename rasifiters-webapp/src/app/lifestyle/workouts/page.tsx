@@ -165,12 +165,6 @@ export default function LifestyleWorkoutsPage() {
           <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">Loading workout types...</div>
         )}
 
-        {workoutsQuery.isError && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-rf-danger">
-            {(workoutsQuery.error as Error).message}
-          </div>
-        )}
-
         {workoutsQuery.data && (
           <div className="space-y-6">
             <WorkoutSection

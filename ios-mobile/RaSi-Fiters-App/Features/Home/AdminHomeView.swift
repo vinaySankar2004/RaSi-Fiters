@@ -1738,13 +1738,6 @@ private struct AdminSummaryTab: View {
                         initials: programContext.adminInitials
                     )
 
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundColor(.appRed)
-                            .padding(.horizontal, 4)
-                    }
-
                     VStack(spacing: rowSpacing) {
                         ForEach(Array(laidOutRows().enumerated()), id: \.offset) { _, row in
                             HStack(spacing: 14) {
@@ -2136,11 +2129,6 @@ private struct StandardMembersTab: View {
                     if isLoading {
                         ProgressView()
                             .padding()
-                    } else if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundColor(.appRed)
-                            .padding(.horizontal, 4)
                     } else {
                         // Member Overview card first
                         if programContext.selectedMemberOverview != nil {
@@ -2243,13 +2231,6 @@ private struct StandardWorkoutTypesTab: View {
                             } label: {
                                 GlassButton(icon: "dumbbell")
                             }
-                        }
-
-                        if let errorMessage {
-                            Text(errorMessage)
-                                .font(.footnote.weight(.semibold))
-                                .foregroundColor(.appRed)
-                                .padding(.horizontal, 4)
                         }
 
                         if isLoading {
@@ -2369,13 +2350,6 @@ private struct AdminWorkoutTypesTab: View {
                         title: "Lifestyle",
                         subtitle: programContext.name
                     )
-
-                    if let errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundColor(.appRed)
-                            .padding(.horizontal, 4)
-                    }
 
                     if canViewAs {
                         viewAsSelector
@@ -5374,10 +5348,6 @@ private struct ActivityTimelineDetailView: View {
             if isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 240, alignment: .center)
-            } else if let errorMessage {
-                Text(errorMessage)
-                    .foregroundColor(.appRed)
-                    .font(.footnote.weight(.semibold))
             } else if points.isEmpty {
                 Text("No data for this range yet.")
                     .font(.footnote)
@@ -5609,10 +5579,6 @@ private struct LifestyleTimelineDetailView: View {
             if isLoading {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 240, alignment: .center)
-            } else if let errorMessage {
-                Text(errorMessage)
-                    .foregroundColor(.appRed)
-                    .font(.footnote.weight(.semibold))
             } else if points.isEmpty {
                 Text("No data for this range yet.")
                     .font(.footnote)
@@ -7943,8 +7909,8 @@ private struct InviteMemberView: View {
 
     @State private var username: String = ""
     @State private var isSending = false
-    @State private var showSuccessMessage = false
     @State private var errorMessage: String?
+    @State private var showSuccessToast = false
 
     private var isFormValid: Bool {
         !username.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -7952,35 +7918,29 @@ private struct InviteMemberView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                header
-                usernameField
-                infoNote
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    header
+                    usernameField
+                    infoNote
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.appRed)
-                        .font(.footnote.weight(.semibold))
-                }
-
-                if showSuccessMessage {
-                    HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Invitation sent")
-                            .foregroundColor(.green)
-                            .font(.subheadline.weight(.semibold))
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .foregroundColor(.appRed)
+                            .font(.footnote.weight(.semibold))
                     }
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(Color.green.opacity(0.1))
-                    .cornerRadius(12)
-                }
 
-                sendButton
+                    sendButton
+                }
+                .padding(20)
             }
-            .padding(20)
+
+            if showSuccessToast {
+                successToast
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 16)
+            }
         }
         .adaptiveBackground(topLeading: true)
         .navigationTitle("Invite Member")
@@ -8013,7 +7973,6 @@ private struct InviteMemberView: View {
                 if !username.isEmpty {
                     Button {
                         username = ""
-                        showSuccessMessage = false
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(Color(.tertiaryLabel))
@@ -8067,7 +8026,7 @@ private struct InviteMemberView: View {
 
         isSending = true
         errorMessage = nil
-        showSuccessMessage = false
+        showSuccessToast = false
 
         do {
             let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -8078,8 +8037,9 @@ private struct InviteMemberView: View {
             )
 
             // Always show success (privacy-preserving)
-            showSuccessMessage = true
+            showSuccessToast = true
             username = ""
+            scheduleToastDismiss()
 
         } catch {
             // Even on error, show success for privacy
@@ -8088,12 +8048,37 @@ private struct InviteMemberView: View {
                error.localizedDescription.contains("connection") {
                 errorMessage = "Network error. Please try again."
             } else {
-                showSuccessMessage = true
+                showSuccessToast = true
                 username = ""
+                scheduleToastDismiss()
             }
         }
 
         isSending = false
+    }
+
+    private var successToast: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.appGreen)
+            Text("Invite sent")
+                .foregroundColor(Color(.label))
+                .font(.subheadline.weight(.semibold))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Color(.systemGray6))
+        .cornerRadius(999)
+        .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 3)
+    }
+
+    private func scheduleToastDismiss() {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            withAnimation {
+                showSuccessToast = false
+            }
+        }
     }
 }
 

@@ -158,14 +158,6 @@ export default function LifestylePage() {
     enabled: !!token && !!programId && hasMemberContext
   });
 
-  const errorMessage =
-    (workoutTypesTotalQuery.error as Error | undefined)?.message ||
-    (workoutTypeMostPopularQuery.error as Error | undefined)?.message ||
-    (workoutTypeLongestDurationQuery.error as Error | undefined)?.message ||
-    (workoutTypeHighestParticipationQuery.error as Error | undefined)?.message ||
-    (workoutTypePopularityQuery.error as Error | undefined)?.message ||
-    (healthTimelineQuery.error as Error | undefined)?.message;
-
   const viewAsLabel = useMemo(() => {
     if (!canViewAs) return "";
     if (adminSelectedMember) return adminSelectedMember.member_name;
@@ -196,12 +188,6 @@ export default function LifestylePage() {
             </button>
           )}
         </header>
-
-        {errorMessage && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-rf-danger">
-            {errorMessage}
-          </div>
-        )}
 
         {canViewAs && (
           <button

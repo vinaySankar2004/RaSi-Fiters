@@ -193,12 +193,6 @@ export default function MemberWorkoutsPage() {
           <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">Loading workouts...</div>
         )}
 
-        {workoutsQuery.isError && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-rf-danger">
-            {(workoutsQuery.error as Error).message}
-          </div>
-        )}
-
         {workoutsQuery.data && workoutsQuery.data.items.length === 0 && (
           <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">No workouts found.</div>
         )}

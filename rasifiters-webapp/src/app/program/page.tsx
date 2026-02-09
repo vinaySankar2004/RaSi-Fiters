@@ -82,11 +82,7 @@ export default function ProgramPage() {
     return computeProgramProgress(program?.start_date ?? null, program?.end_date ?? null);
   }, [program?.start_date, program?.end_date]);
 
-  const errorMessage =
-    (membershipQuery.error as Error | undefined)?.message ||
-    (workoutsQuery.error as Error | undefined)?.message ||
-    (leaveMutation.error as Error | undefined)?.message ||
-    null;
+  const errorMessage = leaveMutation.isError ? (leaveMutation.error as Error).message : null;
 
   return (
     <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
