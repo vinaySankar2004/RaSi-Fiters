@@ -16,6 +16,7 @@ const analyticsRoutes = require("./routes/analytics");
 const analyticsV2Routes = require("./routes/analyticsV2");
 const dailyHealthLogRoutes = require("./routes/dailyHealthLogs");
 const programRoutes = require("./routes/programs");
+const notificationRoutes = require("./routes/notifications");
 require("dotenv").config();
 
 const app = express();
@@ -46,6 +47,7 @@ app.use("/api/daily-health-logs", dailyHealthLogRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/analytics-v2", analyticsV2Routes);
 app.use("/api/programs", programRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // for testing purposes
 app.get("/api/test", (req, res) => {

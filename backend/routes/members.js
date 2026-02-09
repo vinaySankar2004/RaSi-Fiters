@@ -1,7 +1,8 @@
 const express = require("express");
-const { Member, WorkoutLog } = require("../models/index");
+const { Member, WorkoutLog, Program, ProgramInvite, ProgramMembership } = require("../models/index");
 const { sequelize } = require("../config/database");
 const { authenticateToken, isAdmin } = require("../middleware/auth");
+const { handleMemberExit } = require("../utils/programMemberships");
 const router = express.Router();
 
 // GET all members - exclude global_admin users
@@ -162,6 +163,42 @@ router.delete("/:id", authenticateToken, isAdmin, async (req, res) => {
         if (member.global_role === 'global_admin') {
             await transaction.rollback();
             return res.status(403).json({ error: "Cannot delete global admin account." });
+        }
+
+        // Clear invited_by references for any invites sent by this member
+        await ProgramInvite.update(
+            { invited_by: null },
+            { where: { invited_by: member.id }, transaction }
+        );
+
+        // Ensure programs remain valid after this member exits
+        const activeMemberships = await ProgramMembership.findAll({
+            where: {
+                member_id: member.id,
+                status: "active"
+            },
+            attributes: ["program_id"],
+            transaction
+        });
+
+        const createdPrograms = await Program.findAll({
+            where: { created_by: member.id, is_deleted: false },
+            attributes: ["id"],
+            transaction
+        });
+
+        const programIds = new Set([
+            ...activeMemberships.map((membership) => membership.program_id),
+            ...createdPrograms.map((program) => program.id)
+        ]);
+
+        for (const programId of programIds) {
+            await handleMemberExit({
+                programId,
+                exitingMemberId: member.id,
+                transaction,
+                updateCreatedBy: true
+            });
         }
 
         // Delete the member

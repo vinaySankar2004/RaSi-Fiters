@@ -215,6 +215,38 @@ CREATE INDEX idx_program_invite_blocks_program_id ON program_invite_blocks(progr
 CREATE INDEX idx_program_invite_blocks_member_id ON program_invite_blocks(member_id);
 
 -- ============================================================
+-- SECTION 3B: Notifications
+-- ============================================================
+
+CREATE TABLE notifications (
+    id               UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    type             TEXT NOT NULL,
+    program_id       UUID
+        REFERENCES programs(id) ON DELETE SET NULL,
+    actor_member_id  UUID
+        REFERENCES members(id) ON DELETE SET NULL,
+    title            TEXT NOT NULL,
+    body             TEXT NOT NULL,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_notifications_program_id ON notifications(program_id);
+CREATE INDEX idx_notifications_actor_member_id ON notifications(actor_member_id);
+CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+
+CREATE TABLE notification_recipients (
+    notification_id  UUID NOT NULL
+        REFERENCES notifications(id) ON DELETE CASCADE,
+    member_id        UUID NOT NULL
+        REFERENCES members(id) ON DELETE CASCADE,
+    acknowledged_at  TIMESTAMPTZ,
+    PRIMARY KEY (notification_id, member_id)
+);
+
+CREATE INDEX idx_notification_recipients_member_id ON notification_recipients(member_id);
+CREATE INDEX idx_notification_recipients_ack ON notification_recipients(member_id, acknowledged_at);
+
+-- ============================================================
 -- SECTION 4: Workouts library + program workouts + logs
 -- ============================================================
 CREATE TABLE workouts_library (

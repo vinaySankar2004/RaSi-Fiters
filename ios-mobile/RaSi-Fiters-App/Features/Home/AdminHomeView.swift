@@ -2554,7 +2554,7 @@ private struct ProgramInfoSection: View {
     @State private var leaveProgramError: String?
 
     private var canLeaveProgram: Bool {
-        programContext.loggedInUserProgramRole != "admin" && !programContext.isGlobalAdmin
+        !programContext.isGlobalAdmin
     }
 
     var body: some View {
@@ -2699,7 +2699,7 @@ private struct ProgramInfoSection: View {
                 Task { await leaveProgram() }
             }
         } message: {
-            Text("You will no longer have access to \(programContext.name). Your workout history and data will be preserved. If you're invited back and accept, your data will be restored.")
+            Text("You will no longer have access to \(programContext.name). Your workout history and data will be preserved. If you're invited back and accept, your data will be restored. If you're the last member, the program will be deleted automatically.")
         }
         .alert("Error", isPresented: .constant(leaveProgramError != nil)) {
             Button("OK") { leaveProgramError = nil }
@@ -8889,7 +8889,7 @@ private struct StandardProgramTab: View {
                     Task { await leaveProgram() }
                 }
             } message: {
-                Text("You will no longer have access to \(programContext.name). Your workout history and data will be preserved. If you're invited back and accept, your data will be restored.")
+                Text("You will no longer have access to \(programContext.name). Your workout history and data will be preserved. If you're invited back and accept, your data will be restored. If you're the last member, the program will be deleted automatically.")
             }
             .alert("Error", isPresented: .constant(leaveProgramError != nil)) {
                 Button("OK") { leaveProgramError = nil }

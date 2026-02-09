@@ -21,7 +21,7 @@ export default function ProgramPage() {
   const isProgramAdmin = program?.my_role === "admin" || isGlobalAdmin;
   const canInvite = isProgramAdmin;
   const canManageRoles = isProgramAdmin;
-  const canLeaveProgram = !isGlobalAdmin && program?.my_role !== "admin";
+  const canLeaveProgram = !isGlobalAdmin;
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
@@ -337,7 +337,7 @@ export default function ProgramPage() {
       <ConfirmModal
         open={showLeaveConfirm}
         title="Leave Program?"
-        description={`You will no longer have access to ${program?.name ?? "this program"}. Your data will be preserved and restored if you rejoin.`}
+        description={`You will no longer have access to ${program?.name ?? "this program"}. Your data will be preserved and restored if you rejoin. If you're the last member, the program will be deleted automatically.`}
         confirmLabel={leaveMutation.isPending ? "Leaving..." : "Leave"}
         onConfirm={() => leaveMutation.mutate()}
         onClose={() => setShowLeaveConfirm(false)}

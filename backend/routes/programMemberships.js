@@ -4,6 +4,8 @@ const { Op } = require("sequelize");
 const { Member, Program, ProgramMembership, ProgramInvite, ProgramInviteBlock } = require("../models");
 const { sequelize } = require("../config/database");
 const { authenticateToken } = require("../middleware/auth");
+const { handleMemberExit } = require("../utils/programMemberships");
+const { createNotification, getActiveProgramMemberIds } = require("../utils/notifications");
 
 const router = express.Router();
 
@@ -121,7 +123,7 @@ router.get("/members", authenticateToken, async (req, res) => {
         }
 
         const memberships = await ProgramMembership.findAll({
-            where: { program_id: programId },
+            where: { program_id: programId, status: "active" },
             include: [
                 {
                     model: Member,
@@ -160,7 +162,7 @@ router.get("/available", authenticateToken, async (req, res) => {
 
         // Get IDs of members already in the program
         const existingMemberships = await ProgramMembership.findAll({
-            where: { program_id: programId },
+            where: { program_id: programId, status: { [Op.ne]: "removed" } },
             attributes: ["member_id"]
         });
         const enrolledMemberIds = existingMemberships.map((m) => m.member_id);
@@ -370,6 +372,9 @@ router.put("/", authenticateToken, async (req, res) => {
             }
         }
 
+        const previousRole = membership.role;
+        const previousStatus = membership.status;
+
         // Build update object with only provided fields
         const updateData = {};
         if (role !== undefined) updateData.role = role;
@@ -413,6 +418,18 @@ router.put("/", authenticateToken, async (req, res) => {
 
         await membership.update(updateData);
 
+        if (previousRole !== nextRole && nextStatus === "active") {
+            const program = await Program.findByPk(program_id);
+            await createNotification({
+                type: "program.role_changed",
+                programId: program_id,
+                actorMemberId: requester?.id || null,
+                title: "Role updated",
+                body: `Your role in ${program?.name || "the program"} is now ${nextRole}.`,
+                recipientIds: [member_id]
+            });
+        }
+
         // Fetch member info for response
         const member = await Member.findByPk(member_id);
 
@@ -434,11 +451,14 @@ router.put("/", authenticateToken, async (req, res) => {
 
 // DELETE /program-memberships : remove member from program
 router.delete("/", authenticateToken, async (req, res) => {
+    const transaction = await sequelize.transaction();
+
     try {
         const { program_id, member_id } = req.body;
         const requester = req.user;
 
         if (!program_id || !member_id) {
+            await transaction.rollback();
             return res.status(400).json({ error: "program_id and member_id are required." });
         }
 
@@ -451,35 +471,82 @@ router.delete("/", authenticateToken, async (req, res) => {
                     role: "admin",
                     status: "active"
                 }
-            });
+            }, { transaction });
             if (!pm) {
+                await transaction.rollback();
                 return res.status(403).json({ error: "Admin privileges required for this program." });
             }
         }
 
         // Find the membership
         const membership = await ProgramMembership.findOne({
-            where: { program_id, member_id }
+            where: { program_id, member_id },
+            transaction
         });
 
         if (!membership) {
+            await transaction.rollback();
             return res.status(404).json({ error: "Membership not found." });
         }
 
-        // Prevent removal if it would leave no admins
-        if (membership.role === "admin" && membership.status === "active") {
-            const adminCount = await ProgramMembership.count({
-                where: { program_id, role: "admin", status: "active" }
-            });
-            if (adminCount <= 1) {
-                return res.status(400).json({ error: "Cannot remove the last admin from the program." });
-            }
+        if (membership.status === "removed") {
+            await transaction.rollback();
+            return res.status(400).json({ error: "Member is already removed from this program." });
         }
 
-        await membership.destroy();
+        await membership.update({
+            status: "removed",
+            left_at: new Date()
+        }, { transaction });
 
-        res.json({ message: "Member removed from program successfully." });
+        const program = await Program.findByPk(program_id, { transaction });
+        await createNotification({
+            type: "program.member_removed",
+            programId: program_id,
+            actorMemberId: requester?.id || null,
+            title: "Removed from program",
+            body: `You were removed from ${program?.name || "the program"}.`,
+            recipientIds: [member_id],
+            transaction
+        });
+
+        // Clear any program_invite_blocks for this program/member (allows future re-invitation)
+        await ProgramInviteBlock.destroy({
+            where: { program_id, member_id },
+            transaction
+        });
+
+        // Revoke any pending invites this user sent for this program
+        await ProgramInvite.update(
+            { status: "revoked" },
+            {
+                where: {
+                    program_id,
+                    invited_by: member_id,
+                    status: "pending"
+                },
+                transaction
+            }
+        );
+
+        const exitResult = await handleMemberExit({
+            programId: program_id,
+            exitingMemberId: member_id,
+            transaction
+        });
+
+        await transaction.commit();
+
+        res.json({
+            message: exitResult.programDeleted
+                ? "Member removed. The program has been deleted because no active members remain."
+                : "Member removed from program successfully.",
+            program_deleted: exitResult.programDeleted,
+            new_admin_member_id: exitResult.newAdminMemberId,
+            new_admin_member_name: exitResult.newAdminMemberName
+        });
     } catch (err) {
+        await transaction.rollback();
         console.error("Error removing member from program:", err);
         res.status(500).json({ error: "Failed to remove member from program." });
     }
@@ -538,11 +605,11 @@ router.post("/invite", authenticateToken, async (req, res) => {
             return res.json({ message: "Invitation sent" });
         }
 
-        // Check if user already a member of this program
+        // Check if user already a member of this program (active or pending)
         const existingMembership = await ProgramMembership.findOne({
             where: { program_id, member_id: targetMember.id }
         });
-        if (existingMembership) {
+        if (existingMembership && existingMembership.status !== "removed") {
             console.log(`[invite] User '${username}' already member of program - returning success for privacy`);
             return res.json({ message: "Invitation sent" });
         }
@@ -587,6 +654,15 @@ router.post("/invite", authenticateToken, async (req, res) => {
             uses_count: 0,
             // Set expiration to 30 days from now
             expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        });
+
+        await createNotification({
+            type: "program.invite_received",
+            programId: program_id,
+            actorMemberId: requester?.id || null,
+            title: "Program invitation",
+            body: `You've been invited to join ${program.name}.`,
+            recipientIds: [targetMember.id]
         });
 
         console.log(`[invite] Created invite for '${username}' to program '${program.name}'`);
@@ -816,6 +892,20 @@ router.put("/invite-response", authenticateToken, async (req, res) => {
                         uses_count: invite.uses_count + 1
                     }, { transaction });
 
+                    const activeMemberIds = await getActiveProgramMemberIds(invite.program_id, transaction);
+                    const recipientIds = activeMemberIds.filter((id) => id !== targetMember.id);
+                    if (recipientIds.length > 0) {
+                        await createNotification({
+                            type: "program.member_joined",
+                            programId: invite.program_id,
+                            actorMemberId: targetMember.id,
+                            title: "Member joined",
+                            body: `${targetMember.member_name} joined ${programName}.`,
+                            recipientIds,
+                            transaction
+                        });
+                    }
+
                     await transaction.commit();
                     console.log(`[invite-accept] Reactivated membership for member ${targetMember.id} in program ${invite.program_id}`);
                     return res.json({ 
@@ -852,6 +942,20 @@ router.put("/invite-response", authenticateToken, async (req, res) => {
                 status: "accepted",
                 uses_count: invite.uses_count + 1
             }, { transaction });
+
+            const activeMemberIds = await getActiveProgramMemberIds(invite.program_id, transaction);
+            const recipientIds = activeMemberIds.filter((id) => id !== targetMember.id);
+            if (recipientIds.length > 0) {
+                await createNotification({
+                    type: "program.member_joined",
+                    programId: invite.program_id,
+                    actorMemberId: targetMember.id,
+                    title: "Member joined",
+                    body: `${targetMember.member_name} joined ${programName}.`,
+                    recipientIds,
+                    transaction
+                });
+            }
 
             await transaction.commit();
             return res.json({ 
@@ -938,14 +1042,6 @@ router.put("/leave", authenticateToken, async (req, res) => {
             return res.status(400).json({ error: "You have already left this program." });
         }
 
-        // Admins must transfer ownership and demote themselves before leaving
-        if (membership.role === "admin") {
-            await transaction.rollback();
-            return res.status(400).json({
-                error: "Admins must transfer admin role and demote themselves before leaving the program."
-            });
-        }
-
         // Update membership to removed status
         await membership.update({
             status: "removed",
@@ -975,15 +1071,46 @@ router.put("/leave", authenticateToken, async (req, res) => {
         );
         console.log(`[leave-program] Revoked pending invites sent by member ${memberId} for program ${program_id}`);
 
+        const exitResult = await handleMemberExit({
+            programId: program_id,
+            exitingMemberId: memberId,
+            transaction
+        });
+
+        const remainingMemberIds = await getActiveProgramMemberIds(program_id, transaction);
+        if (remainingMemberIds.length > 0) {
+            const program = await Program.findByPk(program_id, { transaction });
+            const leavingMember = await Member.findByPk(memberId, { transaction });
+            await createNotification({
+                type: "program.member_left",
+                programId: program_id,
+                actorMemberId: memberId,
+                title: "Member left",
+                body: `${leavingMember?.member_name || "A member"} left ${program?.name || "the program"}.`,
+                recipientIds: remainingMemberIds,
+                transaction
+            });
+        }
+
         await transaction.commit();
 
         // Fetch program name for response
         const program = await Program.findByPk(program_id);
 
-        res.json({ 
-            message: `You have left ${program?.name || "the program"}. Your data has been preserved and will be restored if you rejoin.`,
+        let message = `You have left ${program?.name || "the program"}. Your data has been preserved and will be restored if you rejoin.`;
+        if (exitResult.programDeleted) {
+            message = `You have left ${program?.name || "the program"}. Your data has been preserved. The program was deleted because no active members remain.`;
+        } else if (exitResult.newAdminMemberName) {
+            message = `You have left ${program?.name || "the program"}. Your data has been preserved and will be restored if you rejoin. ${exitResult.newAdminMemberName} has been promoted to admin.`;
+        }
+
+        res.json({
+            message,
             program_id,
-            member_id: memberId
+            member_id: memberId,
+            program_deleted: exitResult.programDeleted,
+            new_admin_member_id: exitResult.newAdminMemberId,
+            new_admin_member_name: exitResult.newAdminMemberName
         });
 
     } catch (err) {

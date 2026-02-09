@@ -1027,11 +1027,11 @@ private struct DeclineInviteDialog: View {
             
             VStack(spacing: 18) {
                 VStack(spacing: 6) {
-                    Text("Decline Invitation")
+                    Text("Decline invitation?")
                         .font(.title3.weight(.bold))
                         .foregroundColor(Color(.label))
-                    Text("Decline invitation to \(programName)?")
-                        .font(.subheadline)
+                    Text(programName)
+                        .font(.subheadline.weight(.semibold))
                         .foregroundColor(Color(.secondaryLabel))
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 8)
@@ -1055,9 +1055,11 @@ private struct DeclineInviteDialog: View {
                                     .foregroundColor(.appOrange)
                             }
                         }
-                        Text("Block future invites from this program")
+                        Text("Block future invites")
                             .font(.subheadline.weight(.semibold))
                             .foregroundColor(Color(.label))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.9)
                         Spacer(minLength: 0)
                     }
                     .padding(.vertical, 12)

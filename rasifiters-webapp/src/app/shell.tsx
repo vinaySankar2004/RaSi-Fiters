@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { NotificationsGate } from "@/components/NotificationsGate";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -41,6 +42,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className={`relative z-10 min-h-screen ${showNav ? "pb-28" : ""}`}>
         {children}
       </main>
+
+      <NotificationsGate />
 
       {showNav && (
         <nav className="bottom-nav fixed bottom-6 left-1/2 z-20 w-[min(92vw,520px)] -translate-x-1/2 rounded-3xl bg-white/90 px-4 py-3 shadow-2xl backdrop-blur">

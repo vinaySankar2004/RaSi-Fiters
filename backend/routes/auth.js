@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const { sequelize } = require("../config/database");
 const { Member, RefreshToken, MemberCredential, MemberEmail, Program, ProgramMembership, ProgramInvite } = require("../models/index");
 const { authenticateToken } = require("../middleware/auth");
+const { handleMemberExit } = require("../utils/programMemberships");
 
 const router = express.Router();
 
@@ -387,33 +388,39 @@ router.delete("/account", authenticateToken, async (req, res) => {
         );
         console.log(`[delete-account] Cleared invited_by references in program_invites`);
 
-        // Step 2: Check programs where created_by = member_id
-        // Find all programs created by this member
-        const createdPrograms = await Program.findAll({
-            where: { created_by: memberId, is_deleted: false },
+        // Step 2: Ensure programs remain valid after this member exits
+        const activeMemberships = await ProgramMembership.findAll({
+            where: {
+                member_id: memberId,
+                status: "active"
+            },
+            attributes: ["program_id"],
             transaction
         });
 
-        for (const program of createdPrograms) {
-            // Check if there's another admin for this program
-            const otherAdmin = await ProgramMembership.findOne({
-                where: {
-                    program_id: program.id,
-                    role: "admin",
-                    status: "active",
-                    member_id: { [sequelize.Sequelize.Op.ne]: memberId }
-                },
-                transaction
+        const createdPrograms = await Program.findAll({
+            where: { created_by: memberId, is_deleted: false },
+            attributes: ["id"],
+            transaction
+        });
+
+        const programIds = new Set([
+            ...activeMemberships.map((membership) => membership.program_id),
+            ...createdPrograms.map((program) => program.id)
+        ]);
+
+        for (const programId of programIds) {
+            const exitResult = await handleMemberExit({
+                programId,
+                exitingMemberId: memberId,
+                transaction,
+                updateCreatedBy: true
             });
 
-            if (otherAdmin) {
-                // Transfer ownership to another admin
-                await program.update({ created_by: otherAdmin.member_id }, { transaction });
-                console.log(`[delete-account] Transferred program '${program.name}' ownership to member ${otherAdmin.member_id}`);
-            } else {
-                // No other admin - soft delete the program
-                await program.update({ is_deleted: true }, { transaction });
-                console.log(`[delete-account] Soft-deleted program '${program.name}' (no other admin)`);
+            if (exitResult.programDeleted) {
+                console.log(`[delete-account] Soft-deleted program '${programId}' (no active members)`);
+            } else if (exitResult.newAdminMemberId) {
+                console.log(`[delete-account] Promoted member ${exitResult.newAdminMemberId} to admin for program ${programId}`);
             }
         }
 

@@ -2,6 +2,7 @@ const express = require("express");
 const { Program, ProgramMembership } = require("../models");
 const { sequelize } = require("../config/database");
 const { authenticateToken } = require("../middleware/auth");
+const { createNotification, getActiveProgramMemberIds } = require("../utils/notifications");
 
 const router = express.Router();
 
@@ -190,6 +191,13 @@ router.put("/:id", authenticateToken, async (req, res) => {
             }
         }
 
+        const previousSnapshot = {
+            name: program.name,
+            status: program.status,
+            start_date: program.start_date ? String(program.start_date) : null,
+            end_date: program.end_date ? String(program.end_date) : null
+        };
+
         // Build update object with only provided fields
         const updateData = {};
         if (name !== undefined) updateData.name = name;
@@ -199,6 +207,27 @@ router.put("/:id", authenticateToken, async (req, res) => {
         updateData.updated_at = new Date();
 
         await program.update(updateData);
+
+        const detailFields = ["name", "status", "start_date", "end_date"];
+        const hasDetailChange = detailFields.some((field) => {
+            if (updateData[field] === undefined) return false;
+            const nextValue = updateData[field] === null ? null : String(updateData[field]);
+            return nextValue !== previousSnapshot[field];
+        });
+
+        if (hasDetailChange) {
+            const recipientIds = await getActiveProgramMemberIds(id);
+            if (recipientIds.length > 0) {
+                await createNotification({
+                    type: "program.updated",
+                    programId: id,
+                    actorMemberId: requester?.id || null,
+                    title: "Program updated",
+                    body: `${program.name} details were updated.`,
+                    recipientIds
+                });
+            }
+        }
 
         res.json({
             id: program.id,
@@ -248,6 +277,18 @@ router.delete("/:id", authenticateToken, async (req, res) => {
             is_deleted: true,
             updated_at: new Date()
         });
+
+        const recipientIds = await getActiveProgramMemberIds(id);
+        if (recipientIds.length > 0) {
+            await createNotification({
+                type: "program.deleted",
+                programId: id,
+                actorMemberId: requester?.id || null,
+                title: "Program deleted",
+                body: `${program.name} was deleted.`,
+                recipientIds
+            });
+        }
 
         res.json({
             id: program.id,

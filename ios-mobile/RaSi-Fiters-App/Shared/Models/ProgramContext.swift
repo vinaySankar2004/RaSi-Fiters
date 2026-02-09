@@ -81,6 +81,13 @@ final class ProgramContext: ObservableObject {
     // Pending program invites
     @Published var pendingInvites: [APIClient.PendingInviteDTO] = []
 
+    // Notifications (queued modals)
+    @Published var notificationQueue: [APIClient.NotificationDTO] = []
+
+    private var notificationStreamClient: NotificationStreamClient?
+    private var notificationIds: Set<String> = []
+    private let notificationDateFormatter = ISO8601DateFormatter()
+
     init(
         authToken: String? = nil,
         name: String = "Program 1",
@@ -1289,6 +1296,79 @@ final class ProgramContext: ObservableObject {
         return response.message
     }
 
+    // MARK: - Notifications
+
+    @MainActor
+    func startNotificationStreamIfNeeded() {
+        guard let token = authToken, !token.isEmpty else { return }
+        if notificationStreamClient != nil {
+            notificationStreamClient?.disconnect()
+            notificationStreamClient = nil
+        }
+
+        let streamClient = NotificationStreamClient()
+        streamClient.onNotification = { [weak self] notification in
+            Task { @MainActor in
+                self?.enqueueNotification(notification)
+            }
+        }
+        streamClient.onError = { _ in }
+        streamClient.connect(token: token)
+        notificationStreamClient = streamClient
+
+        Task {
+            await loadUnacknowledgedNotifications()
+        }
+    }
+
+    @MainActor
+    func stopNotificationStream() {
+        notificationStreamClient?.disconnect()
+        notificationStreamClient = nil
+        notificationQueue = []
+        notificationIds = []
+    }
+
+    @MainActor
+    func loadUnacknowledgedNotifications() async {
+        guard let token = authToken, !token.isEmpty else { return }
+        do {
+            let items = try await APIClient.shared.fetchUnacknowledgedNotifications(token: token)
+            notificationIds = Set(items.map { $0.id })
+            notificationQueue = sortNotifications(items)
+        } catch {
+            // Ignore; retry on next refresh or stream event
+        }
+    }
+
+    @MainActor
+    func acknowledgeNotification(_ notification: APIClient.NotificationDTO) async {
+        guard let token = authToken, !token.isEmpty else { return }
+        notificationQueue.removeAll { $0.id == notification.id }
+        notificationIds.remove(notification.id)
+        do {
+            _ = try await APIClient.shared.acknowledgeNotification(token: token, notificationId: notification.id)
+        } catch {
+            await loadUnacknowledgedNotifications()
+        }
+    }
+
+    @MainActor
+    private func enqueueNotification(_ notification: APIClient.NotificationDTO) {
+        guard !notificationIds.contains(notification.id) else { return }
+        notificationIds.insert(notification.id)
+        notificationQueue.append(notification)
+        notificationQueue = sortNotifications(notificationQueue)
+    }
+
+    private func sortNotifications(_ items: [APIClient.NotificationDTO]) -> [APIClient.NotificationDTO] {
+        return items.sorted { lhs, rhs in
+            let lhsDate = lhs.createdAt.flatMap { notificationDateFormatter.date(from: $0) } ?? .distantPast
+            let rhsDate = rhs.createdAt.flatMap { notificationDateFormatter.date(from: $0) } ?? .distantPast
+            return lhsDate < rhsDate
+        }
+    }
+
     // MARK: - Sign Out
 
     func signOut() {
@@ -1303,6 +1383,8 @@ final class ProgramContext: ObservableObject {
         programId = nil
         membershipDetails = []
         pendingInvites = []
+
+        stopNotificationStream()
         clearPersistedSession()
 
         if let tokenToRevoke {
