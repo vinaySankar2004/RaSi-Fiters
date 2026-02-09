@@ -192,9 +192,10 @@ CREATE TABLE program_invites (
     created_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX uniq_program_invites_program_username
+-- Allow multiple historical invites, but only one pending invite per program/user
+CREATE UNIQUE INDEX uniq_program_invites_program_username_pending
     ON program_invites(program_id, invited_username)
-    WHERE invited_username IS NOT NULL;
+    WHERE invited_username IS NOT NULL AND status = 'pending';
 
 CREATE INDEX idx_program_invites_program_id ON program_invites(program_id);
 CREATE INDEX idx_program_invites_invited_by ON program_invites(invited_by);

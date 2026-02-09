@@ -565,8 +565,13 @@ router.post("/invite", authenticateToken, async (req, res) => {
             }
         });
         if (existingInvite) {
-            console.log(`[invite] Pending invite already exists for '${username}' - returning success`);
-            return res.json({ message: "Invitation sent" });
+            const isExpired = existingInvite.expires_at && new Date(existingInvite.expires_at) < new Date();
+            if (!isExpired) {
+                console.log(`[invite] Pending invite already exists for '${username}' - returning success`);
+                return res.json({ message: "Invitation sent" });
+            }
+            await existingInvite.update({ status: "expired" });
+            console.log(`[invite] Expired stale pending invite for '${username}' - allowing re-invite`);
         }
 
         // All checks passed - create the invite
