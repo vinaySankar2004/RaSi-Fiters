@@ -114,15 +114,19 @@ router.post("/login", async (req, res) => {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
+        console.log(`[login] credential loaded for member: ${member.id}`);
         const isMatch = await bcrypt.compare(password, credential.password_hash);
         if (!isMatch) {
             console.log(`Password mismatch for user: ${loginId}`);
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
+        console.log(`[login] password verified for member: ${member.id}`);
         const payload = buildLegacyPayload(member);
         const token = createAccessToken(payload);
+        console.log(`[login] access token created for member: ${member.id}`);
         const { rawToken: refreshToken } = await issueRefreshToken(member.id, "legacy");
+        console.log(`[login] refresh token issued for member: ${member.id}`);
 
         // Return token and user info
         res.json({
@@ -160,18 +164,22 @@ const handleAppLogin = async (req, res) => {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
+        console.log(`[global login] credential loaded for member: ${member.id}`);
         const isMatch = await bcrypt.compare(password, credential.password_hash);
         if (!isMatch) {
             console.log(`[global login] password mismatch for user: ${loginId}`);
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
+        console.log(`[global login] password verified for member: ${member.id}`);
         // Default to 'standard' if not set, but the column is non-null with default in DB.
         const globalRole = member.global_role || "standard";
 
         const payload = buildGlobalPayload(member, globalRole);
         const token = createAccessToken(payload);
+        console.log(`[global login] access token created for member: ${member.id}`);
         const { rawToken: refreshToken } = await issueRefreshToken(member.id, "global");
+        console.log(`[global login] refresh token issued for member: ${member.id}`);
 
         res.json({
             token,
