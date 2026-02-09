@@ -7,10 +7,10 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchMemberHistory } from "@/lib/api/members";
 import { BackButton } from "@/components/BackButton";
 import { useClientSearchParams } from "@/lib/use-client-search-params";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 const PERIODS = [
   { key: "week", label: "W" },
@@ -26,7 +26,7 @@ export default function MemberHistoryPage() {
   const memberName = params.get("name") ?? "Member";
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const canViewAny = isGlobalAdmin || program?.my_role === "admin" || program?.my_role === "logger";

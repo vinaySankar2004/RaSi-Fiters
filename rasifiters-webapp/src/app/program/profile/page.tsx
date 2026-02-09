@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { deleteAccount as deleteAccountApi } from "@/lib/api/auth";
 import { fetchMemberProfile, updateMemberProfile } from "@/lib/api/members";
 import { BackButton } from "@/components/BackButton";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Prefer not to say"] as const;
 
@@ -15,7 +15,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { session, isBootstrapping, setSession, signOut } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const fallbackHref = program?.id ? "/program" : "/programs";
 
   const isGlobalAdmin = session?.user.globalRole === "global_admin";

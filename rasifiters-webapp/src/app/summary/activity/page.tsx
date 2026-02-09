@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchActivityTimeline } from "@/lib/api/summary";
 import { BackButton } from "@/components/BackButton";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 type PeriodKey = "week" | "month" | "year" | "program";
 
@@ -21,7 +21,7 @@ const PERIODS: { key: PeriodKey; label: string }[] = [
 export default function ActivityTimelinePage() {
   const router = useRouter();
   const { session, isBootstrapping } = useAuth();
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const [period, setPeriod] = useState<PeriodKey>("week");
 
   useEffect(() => {

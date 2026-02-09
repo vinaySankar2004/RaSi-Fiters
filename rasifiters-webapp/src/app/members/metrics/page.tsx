@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchMemberMetrics, type MemberMetrics } from "@/lib/api/members";
 import { Select } from "@/components/Select";
 import { BackButton } from "@/components/BackButton";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 const SORT_OPTIONS = [
   { value: "workouts", label: "Workouts" },
@@ -74,7 +74,7 @@ export default function MemberMetricsPage() {
   const router = useRouter();
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
 
   const [search, setSearch] = useState("");
@@ -472,7 +472,6 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
     </div>
   );
 }
-
 
 function initials(name: string) {
   return name

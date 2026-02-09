@@ -7,10 +7,10 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchHealthTimeline } from "@/lib/api/lifestyle";
 import { BackButton } from "@/components/BackButton";
 import { useClientSearchParams } from "@/lib/use-client-search-params";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 type PeriodKey = "week" | "month" | "year" | "program";
 
@@ -26,7 +26,7 @@ export default function LifestyleTimelinePage() {
   const params = useClientSearchParams();
   const memberIdParam = params.get("memberId");
   const { session, isBootstrapping } = useAuth();
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
 
   const isGlobalAdmin = session?.user.globalRole === "global_admin";

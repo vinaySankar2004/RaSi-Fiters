@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { applyTheme, getStoredTheme, setStoredTheme, type ThemePreference } from "@/lib/theme";
 import { BackButton } from "@/components/BackButton";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 const OPTIONS: { value: ThemePreference; title: string; description: string; icon: React.ReactNode }[] = [
   {
@@ -31,7 +31,7 @@ const OPTIONS: { value: ThemePreference; title: string; description: string; ico
 export default function AppearancePage() {
   const router = useRouter();
   const { session, isBootstrapping } = useAuth();
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const fallbackHref = program?.id ? "/program" : "/programs";
   const [selection, setSelection] = useState<ThemePreference>("system");
 

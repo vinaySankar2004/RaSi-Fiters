@@ -3,15 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { sendProgramInvite } from "@/lib/api/members";
 import { BackButton } from "@/components/BackButton";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 export default function InviteMemberPage() {
   const router = useRouter();
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
   const isProgramAdmin = program?.my_role === "admin" || session?.user.globalRole === "global_admin";
 

@@ -6,13 +6,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchMemberHealthLogs, type MemberHealthItem } from "@/lib/api/members";
 import { deleteDailyHealthLog, updateDailyHealthLog } from "@/lib/api/logs";
 import { Select } from "@/components/Select";
 import { formatShortDate } from "@/lib/format";
 import { BackButton } from "@/components/BackButton";
 import { useClientSearchParams } from "@/lib/use-client-search-params";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 const SORT_FIELDS = [
   { value: "date", label: "Date" },
@@ -37,7 +37,7 @@ export default function MemberHealthPage() {
   const memberName = params.get("name") ?? "Member";
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
   const queryClient = useQueryClient();
 

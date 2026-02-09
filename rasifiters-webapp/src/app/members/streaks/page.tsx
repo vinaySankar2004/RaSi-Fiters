@@ -6,10 +6,10 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchMemberStreaks } from "@/lib/api/members";
 import { BackButton } from "@/components/BackButton";
 import { useClientSearchParams } from "@/lib/use-client-search-params";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 export default function MemberStreaksPage() {
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function MemberStreaksPage() {
   const memberName = params.get("name") ?? "Member";
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const canViewAny = isGlobalAdmin || program?.my_role === "admin" || program?.my_role === "logger";

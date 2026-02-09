@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchWorkoutTypes } from "@/lib/api/summary";
 import { BackButton } from "@/components/BackButton";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 export default function WorkoutTypesPage() {
   const router = useRouter();
   const { session, isBootstrapping } = useAuth();
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
 
   useEffect(() => {
     if (!isBootstrapping && !session?.token) {

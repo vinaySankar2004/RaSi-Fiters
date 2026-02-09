@@ -2714,7 +2714,7 @@ private struct ProgramInfoSection: View {
 
         do {
             _ = try await programContext.leaveProgram()
-            // Success - UI will update automatically as programId is cleared
+            showSelectProgram = true
         } catch {
             leaveProgramError = error.localizedDescription
         }
@@ -9115,6 +9115,7 @@ private struct StandardProgramTab: View {
         leaveProgramError = nil
         do {
             _ = try await programContext.leaveProgram()
+            showSelectProgram = true
         } catch {
             leaveProgramError = error.localizedDescription
         }

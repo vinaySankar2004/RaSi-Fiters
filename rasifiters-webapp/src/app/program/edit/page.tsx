@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram, saveActiveProgram } from "@/lib/storage";
+import { saveActiveProgram } from "@/lib/storage";
 import { updateProgram } from "@/lib/api/programs";
 import { Select } from "@/components/Select";
 import { BackButton } from "@/components/BackButton";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 const STATUS_OPTIONS = [
   { value: "planned", label: "Planned" },
@@ -20,7 +21,7 @@ export default function ProgramEditPage() {
   const queryClient = useQueryClient();
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const isProgramAdmin = program?.my_role === "admin" || isGlobalAdmin;

@@ -4,17 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { clearActiveProgram, loadActiveProgram } from "@/lib/storage";
+import { clearActiveProgram } from "@/lib/storage";
 import { fetchMembershipDetails, leaveProgram, type MembershipDetail } from "@/lib/api/programs";
 import { fetchProgramWorkouts } from "@/lib/api/program-workouts";
 import { formatDateRange } from "@/lib/format";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 export default function ProgramPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { session, isBootstrapping, signOut } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
 
   const isGlobalAdmin = session?.user.globalRole === "global_admin";

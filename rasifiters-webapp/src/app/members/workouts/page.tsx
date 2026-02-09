@@ -6,12 +6,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchMemberRecentWorkouts, type MemberRecentItem } from "@/lib/api/members";
 import { deleteWorkoutLog, updateWorkoutLog } from "@/lib/api/logs";
 import { Select } from "@/components/Select";
 import { BackButton } from "@/components/BackButton";
 import { useClientSearchParams } from "@/lib/use-client-search-params";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 const SORT_FIELDS = [
   { value: "date", label: "Date" },
@@ -31,7 +31,7 @@ export default function MemberWorkoutsPage() {
   const memberName = params.get("name") ?? "Member";
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
   const queryClient = useQueryClient();
 

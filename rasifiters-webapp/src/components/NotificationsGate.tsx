@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { API_BASE_URL } from "@/lib/config";
 import {
@@ -10,6 +11,13 @@ import {
   type NotificationItem
 } from "@/lib/api/notifications";
 import { NotificationModal } from "@/components/NotificationModal";
+import { fetchPrograms } from "@/lib/api/programs";
+import {
+  clearActiveProgram,
+  loadActiveProgram,
+  saveActiveProgram
+} from "@/lib/storage";
+import { broadcastActiveProgramUpdate } from "@/lib/use-active-program";
 
 const sortByCreatedAt = (items: NotificationItem[]) =>
   [...items].sort((a, b) => {
@@ -22,6 +30,7 @@ export function NotificationsGate() {
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const [queue, setQueue] = useState<NotificationItem[]>([]);
   const idsRef = useRef(new Set<string>());
   const sourceRef = useRef<EventSource | null>(null);
@@ -32,6 +41,68 @@ export function NotificationsGate() {
   );
   const shouldRun = !!token && !isBootstrapping && !isAuthRoute;
 
+  const refreshActiveProgram = async () => {
+    const current = loadActiveProgram();
+    if (!current || !token) return;
+    try {
+      const programs = await fetchPrograms(token);
+      const updated = programs.find((program) => program.id === current.id);
+      if (updated) {
+        saveActiveProgram({
+          id: updated.id,
+          name: updated.name,
+          status: updated.status ?? null,
+          start_date: updated.start_date ?? null,
+          end_date: updated.end_date ?? null,
+          my_role: updated.my_role ?? null,
+          my_status: updated.my_status ?? null
+        });
+      } else {
+        clearActiveProgram();
+      }
+      broadcastActiveProgramUpdate();
+    } catch {
+      // ignore; will retry on next notification
+    }
+  };
+
+  const refreshQueriesForNotification = async (notification: NotificationItem) => {
+    const program = loadActiveProgram();
+    const programId = program?.id ?? "";
+    await queryClient.invalidateQueries({ queryKey: ["programs"] });
+
+    if (programId) {
+      await queryClient.invalidateQueries({ queryKey: ["program", "membership-details", programId] });
+      await queryClient.invalidateQueries({ queryKey: ["program", "roles", programId] });
+      await queryClient.invalidateQueries({ queryKey: ["members", "list", programId] });
+      await queryClient.invalidateQueries({ queryKey: ["program", "workouts", programId] });
+      await queryClient.invalidateQueries({ queryKey: ["members", "metrics", programId, "preview"] });
+    }
+
+    if (notification.type === "program.invite_received") {
+      await queryClient.invalidateQueries({ queryKey: ["invites", true] });
+      await queryClient.invalidateQueries({ queryKey: ["invites", false] });
+    }
+
+    if (
+      [
+        "program.role_changed",
+        "program.member_removed",
+        "program.member_left",
+        "program.member_joined",
+        "program.admin_transferred",
+        "program.updated",
+        "program.deleted"
+      ].includes(notification.type)
+    ) {
+      await queryClient.invalidateQueries({ queryKey: ["program"] });
+      await queryClient.invalidateQueries({ queryKey: ["members"] });
+      await queryClient.invalidateQueries({ queryKey: ["summary"] });
+      await queryClient.invalidateQueries({ queryKey: ["lifestyle"] });
+      await refreshActiveProgram();
+    }
+  };
+
   const addNotifications = (incoming: NotificationItem[]) => {
     if (incoming.length === 0) return;
     setQueue((prev) => {
@@ -40,6 +111,7 @@ export function NotificationsGate() {
         if (idsRef.current.has(item.id)) return;
         idsRef.current.add(item.id);
         next.push(item);
+        void refreshQueriesForNotification(item);
       });
       return sortByCreatedAt(next);
     });

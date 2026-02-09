@@ -270,6 +270,17 @@ final class ProgramContext: ObservableObject {
             membersProgramId = programId
             workouts = workoutsData
             programs = programsData
+            if let pid = programId, let updated = programsData.first(where: { $0.id == pid }) {
+                apply(program: updated)
+                persistSession()
+            } else if programId != nil {
+                programId = nil
+                name = ""
+                status = ""
+                loggedInUserProgramRole = "member"
+                membershipDetails = []
+                persistSession()
+            }
             print("[ProgramContext] loadLookupData: Loaded \(membersData.count) members, \(workoutsData.count) workouts, \(programsData.count) programs")
         } catch {
             // Do not fail hard; just log error
@@ -1359,6 +1370,35 @@ final class ProgramContext: ObservableObject {
         notificationIds.insert(notification.id)
         notificationQueue.append(notification)
         notificationQueue = sortNotifications(notificationQueue)
+        Task { @MainActor in
+            await refreshDataForNotification(notification)
+        }
+    }
+
+    @MainActor
+    private func refreshDataForNotification(_ notification: APIClient.NotificationDTO) async {
+        let type = notification.type
+
+        if type == "program.invite_received" {
+            await loadPendingInvites()
+            await loadLookupData()
+            return
+        }
+
+        if [
+            "program.role_changed",
+            "program.member_removed",
+            "program.member_left",
+            "program.member_joined",
+            "program.admin_transferred",
+            "program.updated",
+            "program.deleted"
+        ].contains(type) {
+            await loadLookupData()
+            if programId != nil {
+                await loadMembershipDetails()
+            }
+        }
     }
 
     private func sortNotifications(_ items: [APIClient.NotificationDTO]) -> [APIClient.NotificationDTO] {

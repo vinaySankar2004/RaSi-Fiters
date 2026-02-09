@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchProgramMembers } from "@/lib/api/programs";
 import { fetchProgramWorkouts } from "@/lib/api/program-workouts";
 import {
@@ -22,6 +21,7 @@ import {
 } from "@/lib/api/summary";
 import { addDailyHealthLog, addWorkoutLog } from "@/lib/api/logs";
 import { Select } from "@/components/Select";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 type PeriodKey = "week" | "month" | "year" | "program";
 
@@ -30,7 +30,7 @@ export default function SummaryPage() {
   const queryClient = useQueryClient();
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
 
   const summaryPeriod: PeriodKey = "week";
   const [showWorkoutForm, setShowWorkoutForm] = useState(false);
@@ -101,7 +101,6 @@ export default function SummaryPage() {
     queryFn: () => fetchWorkoutTypes(token, programId, 50),
     enabled: !!token && !!programId
   });
-
 
   const workoutLogMutation = useMutation({
     mutationFn: (payload: {

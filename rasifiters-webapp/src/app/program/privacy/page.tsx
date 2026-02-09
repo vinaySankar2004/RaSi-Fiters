@@ -3,13 +3,13 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { BackButton } from "@/components/BackButton";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 export default function PrivacyPolicyPage() {
   const router = useRouter();
   const { session, isBootstrapping } = useAuth();
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const fallbackHref = program?.id ? "/program" : "/programs";
 
   useEffect(() => {

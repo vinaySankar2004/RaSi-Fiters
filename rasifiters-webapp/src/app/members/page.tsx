@@ -13,7 +13,6 @@ import {
   YAxis
 } from "recharts";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchProgramMembers, type Member } from "@/lib/api/programs";
 import {
   fetchMemberHealthLogs,
@@ -27,12 +26,13 @@ import {
   type MemberRecentItem
 } from "@/lib/api/members";
 import { formatShortDate } from "@/lib/format";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 export default function MembersPage() {
   const router = useRouter();
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
 
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
@@ -490,7 +490,6 @@ function MemberMetricsSingleCard({ metric }: { metric: MemberMetrics }) {
     </div>
   );
 }
-
 
 function MemberHistoryCard({
   points,

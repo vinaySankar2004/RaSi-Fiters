@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "@/lib/auth/auth-provider";
-import { loadActiveProgram } from "@/lib/storage";
 import { fetchProgramMembers, type Member } from "@/lib/api/programs";
 import {
   fetchHealthTimeline,
@@ -17,6 +16,7 @@ import {
   type HealthTimelinePoint,
   type WorkoutTypePopularity
 } from "@/lib/api/lifestyle";
+import { useActiveProgram } from "@/lib/use-active-program";
 
 type PopularityMetricKey = "count" | "totalMinutes" | "avgMinutes";
 
@@ -36,7 +36,7 @@ export default function LifestylePage() {
   const router = useRouter();
   const { session, isBootstrapping } = useAuth();
   const token = session?.token ?? "";
-  const program = loadActiveProgram();
+  const program = useActiveProgram();
   const programId = program?.id ?? "";
   const loggedInUserId = session?.user.id;
 
