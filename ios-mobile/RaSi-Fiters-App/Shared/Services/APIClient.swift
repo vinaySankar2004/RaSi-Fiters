@@ -18,29 +18,25 @@ final class APIClient {
         self.session = session
     }
 
+    private func endpoint(_ path: String) -> URL {
+        let trimmed = path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard !trimmed.isEmpty else { return baseURL }
+        return trimmed
+            .split(separator: "/")
+            .reduce(baseURL) { $0.appendingPathComponent(String($1)) }
+    }
+
     // Quick connectivity check
     func healthCheck() async throws -> String {
-        let request = URLRequest(url: baseURL.appendingPathComponent("test"))
+        let request = URLRequest(url: endpoint("test"))
         let data = try await data(for: request)
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         return json?["message"] as? String ?? "OK"
     }
 
-    // Legacy login (kept if needed elsewhere)
-    func login(username: String, password: String) async throws -> AuthResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("auth/login"))
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body = ["username": username, "password": password]
-        request.httpBody = try JSONEncoder().encode(body)
-
-        let data = try await data(for: request)
-        return try JSONDecoder().decode(AuthResponse.self, from: data)
-    }
-
-    // New global-role-aware login
+    // Global-role-aware login
     func loginGlobal(identifier: String, password: String) async throws -> AuthResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("auth/login/global"))
+        var request = URLRequest(url: endpoint("auth/login/global"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let body = ["identifier": identifier, "password": password]
@@ -72,7 +68,7 @@ final class APIClient {
         password: String,
         gender: String?
     ) async throws -> RegisterResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("auth/register"))
+        var request = URLRequest(url: endpoint("auth/register"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
@@ -104,7 +100,7 @@ final class APIClient {
     }
 
     func refreshSession(refreshToken: String) async throws -> TokenRefreshResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("auth/refresh"))
+        var request = URLRequest(url: endpoint("auth/refresh"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let body = ["refresh_token": refreshToken]
@@ -119,7 +115,7 @@ final class APIClient {
     }
 
     func logout(refreshToken: String) async throws {
-        var request = URLRequest(url: baseURL.appendingPathComponent("auth/logout"))
+        var request = URLRequest(url: endpoint("auth/logout"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let body = ["refresh_token": refreshToken]
@@ -134,7 +130,7 @@ final class APIClient {
 
     // Analytics summary (period: day | week | month | year)
     func fetchAnalyticsSummary(token: String, period: String, programId: String?) async throws -> AnalyticsSummary {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics/summary"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics/summary"), resolvingAgainstBaseURL: false)!
         var items = [URLQueryItem(name: "period", value: period)]
         if let programId {
             items.append(URLQueryItem(name: "programId", value: programId))
@@ -297,7 +293,7 @@ final class APIClient {
     }
 
     func fetchMembers(token: String) async throws -> [MemberDTO] {
-        var request = URLRequest(url: baseURL.appendingPathComponent("members"))
+        var request = URLRequest(url: endpoint("members"))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -306,7 +302,7 @@ final class APIClient {
     }
 
     func fetchProgramMembers(token: String, programId: String) async throws -> [MemberDTO] {
-        var components = URLComponents(url: baseURL.appendingPathComponent("program-memberships/members"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("program-memberships/members"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "programId", value: programId)]
         guard let url = components.url else { throw APIError(message: "Invalid program members URL") }
         var request = URLRequest(url: url)
@@ -319,7 +315,7 @@ final class APIClient {
 
     /// Fetches members NOT enrolled in the specified program (available for enrollment)
     func fetchAvailableMembers(token: String, programId: String) async throws -> [MemberDTO] {
-        var components = URLComponents(url: baseURL.appendingPathComponent("program-memberships/available"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("program-memberships/available"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "programId", value: programId)]
         guard let url = components.url else { throw APIError(message: "Invalid available members URL") }
         var request = URLRequest(url: url)
@@ -343,7 +339,7 @@ final class APIClient {
 
     /// Enrolls an existing member into a program (creates ProgramMembership only)
     func enrollExistingMember(token: String, memberId: String, programId: String, joinedAt: String?) async throws -> EnrollMemberResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-memberships/enroll"))
+        var request = URLRequest(url: endpoint("program-memberships/enroll"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -361,7 +357,7 @@ final class APIClient {
     }
 
     func fetchWorkouts(token: String) async throws -> [WorkoutDTO] {
-        var request = URLRequest(url: baseURL.appendingPathComponent("workouts"))
+        var request = URLRequest(url: endpoint("workouts"))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -372,7 +368,7 @@ final class APIClient {
     // MARK: - Program Workouts (per-program workout management)
 
     func fetchProgramWorkouts(token: String, programId: String) async throws -> [ProgramWorkoutDTO] {
-        var components = URLComponents(url: baseURL.appendingPathComponent("program-workouts"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("program-workouts"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "programId", value: programId)]
         guard let url = components.url else { throw APIError(message: "Invalid program workouts URL") }
 
@@ -385,7 +381,7 @@ final class APIClient {
     }
 
     func toggleProgramWorkoutVisibility(token: String, programId: String, libraryWorkoutId: String) async throws -> ProgramWorkoutResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-workouts/toggle-visibility"))
+        var request = URLRequest(url: endpoint("program-workouts/toggle-visibility"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -401,7 +397,7 @@ final class APIClient {
     }
 
     func toggleCustomWorkoutVisibility(token: String, workoutId: String) async throws -> ProgramWorkoutResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-workouts/\(workoutId)/toggle-visibility"))
+        var request = URLRequest(url: endpoint("program-workouts/\(workoutId)/toggle-visibility"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -410,7 +406,7 @@ final class APIClient {
     }
 
     func addCustomProgramWorkout(token: String, programId: String, workoutName: String) async throws -> ProgramWorkoutResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-workouts/custom"))
+        var request = URLRequest(url: endpoint("program-workouts/custom"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -426,7 +422,7 @@ final class APIClient {
     }
 
     func editCustomProgramWorkout(token: String, workoutId: String, workoutName: String) async throws -> ProgramWorkoutResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-workouts/\(workoutId)"))
+        var request = URLRequest(url: endpoint("program-workouts/\(workoutId)"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -439,7 +435,7 @@ final class APIClient {
     }
 
     func deleteCustomProgramWorkout(token: String, workoutId: String) async throws {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-workouts/\(workoutId)"))
+        var request = URLRequest(url: endpoint("program-workouts/\(workoutId)"))
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -447,7 +443,7 @@ final class APIClient {
     }
 
     func fetchPrograms(token: String) async throws -> [ProgramDTO] {
-        var request = URLRequest(url: baseURL.appendingPathComponent("programs"))
+        var request = URLRequest(url: endpoint("programs"))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -461,7 +457,7 @@ final class APIClient {
     }
 
     func deleteProgram(token: String, programId: String) async throws -> DeleteProgramResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("programs/\(programId)"))
+        var request = URLRequest(url: endpoint("programs/\(programId)"))
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -479,7 +475,7 @@ final class APIClient {
     }
 
     func createProgram(token: String, name: String, status: String, startDate: String?, endDate: String?) async throws -> CreateProgramResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("programs"))
+        var request = URLRequest(url: endpoint("programs"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -498,7 +494,7 @@ final class APIClient {
     }
 
     func fetchMTDParticipation(token: String, programId: String) async throws -> MTDParticipationDTO {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics-v2/participation/mtd"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics-v2/participation/mtd"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "programId", value: programId)]
         guard let url = components.url else {
             throw APIError(message: "Invalid MTD participation URL")
@@ -512,7 +508,7 @@ final class APIClient {
     }
 
     func fetchTotalWorkoutsMTD(token: String, programId: String) async throws -> TotalWorkoutsMTDDTO {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics/workouts/total"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics/workouts/total"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "programId", value: programId)]
         guard let url = components.url else {
             throw APIError(message: "Invalid total workouts URL")
@@ -526,7 +522,7 @@ final class APIClient {
     }
 
     func fetchTotalDurationMTD(token: String, programId: String) async throws -> TotalDurationMTDDTO {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics/duration/total"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics/duration/total"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "programId", value: programId)]
         guard let url = components.url else {
             throw APIError(message: "Invalid total duration URL")
@@ -540,7 +536,7 @@ final class APIClient {
     }
 
     func fetchAvgDurationMTD(token: String, programId: String) async throws -> AvgDurationMTDDTO {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics/duration/average"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics/duration/average"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "programId", value: programId)]
         guard let url = components.url else {
             throw APIError(message: "Invalid average duration URL")
@@ -554,7 +550,7 @@ final class APIClient {
     }
 
     func fetchActivityTimeline(token: String, period: String, programId: String) async throws -> ActivityTimelineResponse {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics/timeline"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics/timeline"), resolvingAgainstBaseURL: false)!
         components.queryItems = [
             URLQueryItem(name: "period", value: period),
             URLQueryItem(name: "programId", value: programId)
@@ -576,7 +572,7 @@ final class APIClient {
         programId: String,
         memberId: String? = nil
     ) async throws -> HealthTimelineResponse {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics/health/timeline"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics/health/timeline"), resolvingAgainstBaseURL: false)!
         var items = [
             URLQueryItem(name: "period", value: period),
             URLQueryItem(name: "programId", value: programId)
@@ -597,7 +593,7 @@ final class APIClient {
     }
 
     func fetchDistributionByDay(token: String, programId: String) async throws -> DistributionByDayDTO {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics/distribution/day"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics/distribution/day"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "programId", value: programId)]
         guard let url = components.url else {
             throw APIError(message: "Invalid distribution URL")
@@ -611,7 +607,7 @@ final class APIClient {
     }
 
     func fetchWorkoutTypes(token: String, programId: String, memberId: String? = nil, limit: Int = 100) async throws -> [WorkoutTypeDTO] {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics/workouts/types"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics/workouts/types"), resolvingAgainstBaseURL: false)!
         var items = [
             URLQueryItem(name: "programId", value: programId),
             URLQueryItem(name: "limit", value: "\(limit)")
@@ -632,7 +628,7 @@ final class APIClient {
     }
 
     func fetchWorkoutTypesTotal(token: String, programId: String, memberId: String? = nil) async throws -> WorkoutTypesTotalDTO {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics-v2/workouts/types/total"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics-v2/workouts/types/total"), resolvingAgainstBaseURL: false)!
         var items = [URLQueryItem(name: "programId", value: programId)]
         if let memberId {
             items.append(URLQueryItem(name: "memberId", value: memberId))
@@ -650,7 +646,7 @@ final class APIClient {
     }
 
     func fetchWorkoutTypeMostPopular(token: String, programId: String, memberId: String? = nil) async throws -> WorkoutTypeMostPopularDTO {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics-v2/workouts/types/most-popular"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics-v2/workouts/types/most-popular"), resolvingAgainstBaseURL: false)!
         var items = [URLQueryItem(name: "programId", value: programId)]
         if let memberId {
             items.append(URLQueryItem(name: "memberId", value: memberId))
@@ -668,7 +664,7 @@ final class APIClient {
     }
 
     func fetchWorkoutTypeLongestDuration(token: String, programId: String, memberId: String? = nil) async throws -> WorkoutTypeLongestDurationDTO {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics-v2/workouts/types/longest-duration"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics-v2/workouts/types/longest-duration"), resolvingAgainstBaseURL: false)!
         var items = [URLQueryItem(name: "programId", value: programId)]
         if let memberId {
             items.append(URLQueryItem(name: "memberId", value: memberId))
@@ -686,7 +682,7 @@ final class APIClient {
     }
 
     func fetchWorkoutTypeHighestParticipation(token: String, programId: String, memberId: String? = nil) async throws -> WorkoutTypeHighestParticipationDTO {
-        var components = URLComponents(url: baseURL.appendingPathComponent("analytics-v2/workouts/types/highest-participation"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("analytics-v2/workouts/types/highest-participation"), resolvingAgainstBaseURL: false)!
         var items = [URLQueryItem(name: "programId", value: programId)]
         if let memberId {
             items.append(URLQueryItem(name: "memberId", value: memberId))
@@ -704,7 +700,7 @@ final class APIClient {
     }
 
     func addWorkoutLog(token: String, memberName: String, workoutName: String, date: String, durationMinutes: Int, programId: String?, memberId: String?) async throws {
-        var request = URLRequest(url: baseURL.appendingPathComponent("workout-logs"))
+        var request = URLRequest(url: endpoint("workout-logs"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -729,7 +725,7 @@ final class APIClient {
         sleepHours: Double?,
         foodQuality: Int?
     ) async throws {
-        var request = URLRequest(url: baseURL.appendingPathComponent("daily-health-logs"))
+        var request = URLRequest(url: endpoint("daily-health-logs"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -757,7 +753,7 @@ final class APIClient {
         sortBy: String? = nil,
         sortDir: String? = nil
     ) async throws -> MemberHealthLogResponse {
-        var components = URLComponents(url: baseURL.appendingPathComponent("daily-health-logs"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("daily-health-logs"), resolvingAgainstBaseURL: false)!
         var queryItems = [
             URLQueryItem(name: "programId", value: programId),
             URLQueryItem(name: "memberId", value: memberId),
@@ -785,7 +781,7 @@ final class APIClient {
         sleepHours: Double?,
         foodQuality: Int?
     ) async throws {
-        var request = URLRequest(url: baseURL.appendingPathComponent("daily-health-logs"))
+        var request = URLRequest(url: endpoint("daily-health-logs"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -809,7 +805,7 @@ final class APIClient {
         memberId: String?,
         logDate: String
     ) async throws {
-        var request = URLRequest(url: baseURL.appendingPathComponent("daily-health-logs"))
+        var request = URLRequest(url: endpoint("daily-health-logs"))
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -983,7 +979,7 @@ final class APIClient {
                    dateOfBirth: String?,
                    dateJoined: String?,
                    programId: String) async throws -> MemberDetailDTO {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-memberships"))
+        var request = URLRequest(url: endpoint("program-memberships"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1010,7 +1006,7 @@ final class APIClient {
                             direction: String? = nil,
                             memberId: String? = nil,
                             filters: [String: String]? = nil) async throws -> MemberMetricsResponse {
-        var components = URLComponents(url: baseURL.appendingPathComponent("member-metrics"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("member-metrics"), resolvingAgainstBaseURL: false)!
         var items: [URLQueryItem] = [URLQueryItem(name: "programId", value: programId)]
         if let search, !search.isEmpty { items.append(URLQueryItem(name: "search", value: search)) }
         if let sort { items.append(URLQueryItem(name: "sort", value: sort)) }
@@ -1034,7 +1030,7 @@ final class APIClient {
     }
 
     func fetchMemberHistory(token: String, programId: String, memberId: String, period: String) async throws -> MemberHistoryResponse {
-        var components = URLComponents(url: baseURL.appendingPathComponent("member-history"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("member-history"), resolvingAgainstBaseURL: false)!
         components.queryItems = [
             URLQueryItem(name: "programId", value: programId),
             URLQueryItem(name: "memberId", value: memberId),
@@ -1050,7 +1046,7 @@ final class APIClient {
     }
 
     func fetchMemberStreaks(token: String, programId: String, memberId: String) async throws -> MemberStreaksResponse {
-        var components = URLComponents(url: baseURL.appendingPathComponent("member-streaks"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("member-streaks"), resolvingAgainstBaseURL: false)!
         components.queryItems = [
             URLQueryItem(name: "programId", value: programId),
             URLQueryItem(name: "memberId", value: memberId)
@@ -1074,7 +1070,7 @@ final class APIClient {
         sortBy: String? = nil,
         sortDir: String? = nil
     ) async throws -> MemberRecentWorkoutsResponse {
-        var components = URLComponents(url: baseURL.appendingPathComponent("member-recent"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("member-recent"), resolvingAgainstBaseURL: false)!
         var queryItems = [
             URLQueryItem(name: "programId", value: programId),
             URLQueryItem(name: "memberId", value: memberId),
@@ -1095,7 +1091,7 @@ final class APIClient {
     }
     
     func deleteWorkoutLog(token: String, programId: String, memberId: String, workoutName: String, date: String) async throws {
-        var request = URLRequest(url: baseURL.appendingPathComponent("workout-logs"))
+        var request = URLRequest(url: endpoint("workout-logs"))
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1119,7 +1115,7 @@ final class APIClient {
         date: String,
         duration: Int
     ) async throws {
-        var request = URLRequest(url: baseURL.appendingPathComponent("workout-logs"))
+        var request = URLRequest(url: endpoint("workout-logs"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1142,7 +1138,7 @@ final class APIClient {
     // MARK: - Program Management
 
     func updateProgram(token: String, programId: String, name: String?, status: String?, startDate: String?, endDate: String?) async throws -> ProgramUpdateResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("programs/\(programId)"))
+        var request = URLRequest(url: endpoint("programs/\(programId)"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1162,7 +1158,7 @@ final class APIClient {
     // MARK: - Membership Management
 
     func fetchMembershipDetails(token: String, programId: String) async throws -> [MembershipDetailDTO] {
-        var components = URLComponents(url: baseURL.appendingPathComponent("program-memberships/details"), resolvingAgainstBaseURL: false)!
+        var components = URLComponents(url: endpoint("program-memberships/details"), resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "programId", value: programId)]
         guard let url = components.url else { throw APIError(message: "Invalid membership details URL") }
         
@@ -1175,7 +1171,7 @@ final class APIClient {
     }
 
     func updateMembership(token: String, programId: String, memberId: String, role: String?, status: String?, isActive: Bool?, joinedAt: String?) async throws -> MembershipUpdateResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-memberships"))
+        var request = URLRequest(url: endpoint("program-memberships"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1196,7 +1192,7 @@ final class APIClient {
     }
 
     func removeMemberFromProgram(token: String, programId: String, memberId: String) async throws {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-memberships"))
+        var request = URLRequest(url: endpoint("program-memberships"))
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1213,7 +1209,7 @@ final class APIClient {
     // MARK: - Member Profile Management
 
     func updateMemberProfile(token: String, memberId: String, firstName: String?, lastName: String?, gender: String?) async throws -> MemberUpdateResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("members/\(memberId)"))
+        var request = URLRequest(url: endpoint("members/\(memberId)"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1230,7 +1226,7 @@ final class APIClient {
     }
 
     func fetchMemberById(token: String, memberId: String) async throws -> MemberDTO {
-        var request = URLRequest(url: baseURL.appendingPathComponent("members/\(memberId)"))
+        var request = URLRequest(url: endpoint("members/\(memberId)"))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -1247,7 +1243,7 @@ final class APIClient {
     /// Sends a program invitation to a user by username.
     /// Always returns success message for privacy (doesn't reveal if username exists).
     func sendProgramInvite(token: String, programId: String, username: String) async throws -> InviteResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-memberships/invite"))
+        var request = URLRequest(url: endpoint("program-memberships/invite"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1306,7 +1302,7 @@ final class APIClient {
 
     /// Fetches pending invites for the logged-in user (standard users)
     func fetchMyInvites(token: String) async throws -> [PendingInviteDTO] {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-memberships/my-invites"))
+        var request = URLRequest(url: endpoint("program-memberships/my-invites"))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -1316,7 +1312,7 @@ final class APIClient {
 
     /// Fetches ALL pending invites system-wide (global_admin only)
     func fetchAllInvites(token: String) async throws -> [PendingInviteDTO] {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-memberships/all-invites"))
+        var request = URLRequest(url: endpoint("program-memberships/all-invites"))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -1329,7 +1325,7 @@ final class APIClient {
     ///   - action: "accept", "decline", or "revoke" (revoke is admin-only)
     ///   - blockFuture: If true, blocks future invites from this program (only for decline)
     func respondToInvite(token: String, inviteId: String, action: String, blockFuture: Bool = false) async throws -> InviteResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-memberships/invite-response"))
+        var request = URLRequest(url: endpoint("program-memberships/invite-response"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1360,7 +1356,7 @@ final class APIClient {
 
     /// Changes the password for the authenticated user
     func changePassword(token: String, newPassword: String) async throws -> ChangePasswordResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("auth/change-password"))
+        var request = URLRequest(url: endpoint("auth/change-password"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1374,7 +1370,7 @@ final class APIClient {
 
     /// Permanently deletes the authenticated user's account and all associated data
     func deleteAccount(token: String) async throws -> DeleteAccountResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("auth/account"))
+        var request = URLRequest(url: endpoint("auth/account"))
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -1392,7 +1388,7 @@ final class APIClient {
 
     /// Leave a program (soft removal - data is preserved for potential rejoin)
     func leaveProgram(token: String, programId: String) async throws -> LeaveProgramResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("program-memberships/leave"))
+        var request = URLRequest(url: endpoint("program-memberships/leave"))
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -1431,7 +1427,7 @@ final class APIClient {
     }
 
     func fetchUnacknowledgedNotifications(token: String) async throws -> [NotificationDTO] {
-        var request = URLRequest(url: baseURL.appendingPathComponent("notifications/unacknowledged"))
+        var request = URLRequest(url: endpoint("notifications/unacknowledged"))
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -1441,7 +1437,7 @@ final class APIClient {
     }
 
     func acknowledgeNotification(token: String, notificationId: String) async throws -> NotificationAckResponse {
-        var request = URLRequest(url: baseURL.appendingPathComponent("notifications/\(notificationId)/acknowledge"))
+        var request = URLRequest(url: endpoint("notifications/\(notificationId)/acknowledge"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")

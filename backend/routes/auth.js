@@ -48,15 +48,6 @@ const issueRefreshToken = async (memberId, clientType) => {
 
 const formatMemberName = (member) => member?.member_name || "";
 
-const buildLegacyPayload = (member) => ({
-    id: member.id,
-    userId: member.id, // Keeping for backward compatibility
-    username: member.username,
-    member_name: formatMemberName(member),
-    role: member.global_role === "global_admin" ? "admin" : "member",
-    date_joined: member.date_joined
-});
-
 const buildGlobalPayload = (member, globalRole) => ({
     id: member.id,
     username: member.username,
@@ -91,58 +82,6 @@ const validatePassword = (password) => {
     }
     return null;
 };
-
-// Legacy login (kept intact for backward compatibility)
-router.post("/login", async (req, res) => {
-    const { identifier, username, password } = req.body;
-    const loginId = identifier || username;
-    console.log(`Login attempt for identifier: ${loginId}`);
-
-    try {
-        const member = await resolveMemberByIdentifier(loginId);
-
-        if (!member) {
-            console.log(`User not found: ${loginId}`);
-            return res.status(401).json({ error: "Invalid credentials" });
-        }
-
-        console.log(`User found: ${member.username}, role: ${member.global_role}`);
-
-        const credential = await MemberCredential.findByPk(member.id);
-        if (!credential) {
-            console.log(`No credentials for member: ${member.id}`);
-            return res.status(401).json({ error: "Invalid credentials" });
-        }
-
-        console.log(`[login] credential loaded for member: ${member.id}`);
-        const isMatch = await bcrypt.compare(password, credential.password_hash);
-        if (!isMatch) {
-            console.log(`Password mismatch for user: ${loginId}`);
-            return res.status(401).json({ error: "Invalid credentials" });
-        }
-
-        console.log(`[login] password verified for member: ${member.id}`);
-        const payload = buildLegacyPayload(member);
-        const token = createAccessToken(payload);
-        console.log(`[login] access token created for member: ${member.id}`);
-        const { rawToken: refreshToken } = await issueRefreshToken(member.id, "legacy");
-        console.log(`[login] refresh token issued for member: ${member.id}`);
-
-        // Return token and user info
-        res.json({
-            token,
-            refresh_token: refreshToken,
-            username: member.username,
-            role: member.global_role === "global_admin" ? "admin" : "member",
-            member_name: formatMemberName(member),
-            date_joined: member.date_joined, // Include date_joined in the response
-            message: "Login successful!"
-        });
-    } catch (error) {
-        console.error("Login error:", error);
-        res.status(500).json({ error: "Server error during login" });
-    }
-});
 
 // Shared handler for app (mobile-first) and global login; keeps logic in one place.
 const handleAppLogin = async (req, res) => {
@@ -228,19 +167,11 @@ router.post("/refresh", async (req, res) => {
             return res.status(401).json({ error: "Invalid refresh token" });
         }
 
-        let payload;
-        if (storedToken.client_type === "legacy") {
-            payload = buildLegacyPayload(member);
-        } else {
-            const globalRole = member.global_role || "standard";
-            payload = buildGlobalPayload(member, globalRole);
-        }
+        const globalRole = member.global_role || "standard";
+        const payload = buildGlobalPayload(member, globalRole);
 
         const token = createAccessToken(payload);
-        const { rawToken: newRefreshToken, tokenHash: newTokenHash } = await issueRefreshToken(
-            member.id,
-            storedToken.client_type
-        );
+        const { rawToken: newRefreshToken, tokenHash: newTokenHash } = await issueRefreshToken(member.id, "global");
 
         await storedToken.update({ revoked_at: new Date(), replaced_by_hash: newTokenHash });
 

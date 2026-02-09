@@ -1,18 +1,17 @@
 # Mobile API — Login (iOS-first, Android-ready)
 
-Scope: mobile clients only; no behavior or payload changes for existing web/legacy routes. This documents the canonical mobile login contract so iOS now (and Android later) can share a predictable endpoint with minimal client-side shaping.
+Scope: mobile clients only; no behavior or payload changes for existing web routes. This documents the canonical mobile login contract so iOS now (and Android later) can share a predictable endpoint with minimal client-side shaping.
 
 ## Naming and routing
 - Canonical mobile/app route: `POST /auth/login/app` (verb is acceptable here because it is an action).
 - Alias kept for continuity: `/auth/login/global` (same handler).
-- Legacy compatibility: keep existing `/login` untouched for web/older clients.
 - No versioning in path (per team guidance).
 - Use nouns for resources elsewhere (e.g., `/users`, `/workouts`); reserve verbs for actions like `login`, `logout`, `reset_password`.
 
 ## Request (mobile)
 ```json
 {
-  "username": "string",
+  "identifier": "string",
   "password": "string",
   "device_id": "string optional",   // if you want to bind a device to the session/notifications
   "push_token": "string optional"   // optional push registration token
@@ -22,15 +21,12 @@ Scope: mobile clients only; no behavior or payload changes for existing web/lega
 ## Success response (mobile)
 ```json
 {
-  "access_token": "jwt-string",     // same as existing `token`
+  "token": "jwt-string",
   "refresh_token": "opaque-string",
-  "user": {
-    "id": "number",
-    "username": "string",
-    "member_name": "string",
-    "global_role": "string",        // defaults to `standard` if unset
-    "date_joined": "YYYY-MM-DD"
-  },
+  "member_id": "uuid",
+  "username": "string",
+  "member_name": "string",
+  "global_role": "string",
   "message": "Login successful"
 }
 ```
@@ -65,5 +61,4 @@ Scope: mobile clients only; no behavior or payload changes for existing web/lega
 ## Migration notes
 - iOS should call `POST /auth/login/app`; Android can reuse the same contract later.
 - `/auth/login/global` remains available if a caller is already using it.
-- `/login` stays intact for existing clients; no UI/behavior changes.
 - The app routes reuse the existing global login logic to avoid functional drift.
