@@ -717,6 +717,7 @@ final class APIClient {
         ]
         if let programId { body["program_id"] = programId }
         if let memberId { body["member_id"] = memberId }
+
         request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
         _ = try await data(for: request)
     }
@@ -801,7 +802,11 @@ final class APIClient {
         ]
         if let memberId { body["member_id"] = memberId }
         if let sleepHours { body["sleep_hours"] = sleepHours }
-        if let foodQuality { body["food_quality"] = foodQuality }
+        if let foodQuality {
+            body["food_quality"] = foodQuality
+        } else {
+            body["food_quality"] = NSNull()
+        }
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
         _ = try await data(for: request)

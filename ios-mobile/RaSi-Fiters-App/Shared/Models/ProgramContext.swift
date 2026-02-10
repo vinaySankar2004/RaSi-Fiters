@@ -250,18 +250,14 @@ final class ProgramContext: ObservableObject {
 
     @MainActor
     func loadLookupData() async {
-        print("[ProgramContext] loadLookupData called - programId: \(programId ?? "nil")")
         guard let token = authToken, !token.isEmpty else { 
-            print("[ProgramContext] loadLookupData: No auth token")
             return 
         }
         do {
             let membersData: [APIClient.MemberDTO]
             if let pid = programId {
-                print("[ProgramContext] loadLookupData: Fetching program members for programId=\(pid)")
                 membersData = try await APIClient.shared.fetchProgramMembers(token: token, programId: pid)
             } else {
-                print("[ProgramContext] loadLookupData: Fetching all members (no programId)")
                 membersData = try await APIClient.shared.fetchMembers(token: token)
             }
             let workoutsData = try await APIClient.shared.fetchWorkouts(token: token)
@@ -281,11 +277,9 @@ final class ProgramContext: ObservableObject {
                 membershipDetails = []
                 persistSession()
             }
-            print("[ProgramContext] loadLookupData: Loaded \(membersData.count) members, \(workoutsData.count) workouts, \(programsData.count) programs")
         } catch {
-            // Do not fail hard; just log error
+            // Do not fail hard; surface error message
             errorMessage = error.localizedDescription
-            print("[ProgramContext] loadLookupData error: \(error.localizedDescription)")
         }
     }
 
@@ -844,35 +838,26 @@ final class ProgramContext: ObservableObject {
 
     @MainActor
     func loadMembershipDetails() async {
-        print("[ProgramContext] loadMembershipDetails called")
         guard let token = authToken, !token.isEmpty else { 
-            print("[ProgramContext] loadMembershipDetails: No auth token")
             return 
         }
         guard let pid = programId else {
             errorMessage = "No program selected for membership details."
-            print("[ProgramContext] loadMembershipDetails: No program selected")
             return
         }
         do {
             let data = try await APIClient.shared.fetchMembershipDetails(token: token, programId: pid)
             let activeData = data.filter { $0.is_active }
             membershipDetails = activeData
-            print("[ProgramContext] loadMembershipDetails: Received \(activeData.count) members")
 
             // Update logged-in user's program role
             if let userId = loggedInUserId,
                let myMembership = activeData.first(where: { $0.member_id == userId }) {
-                print("[ProgramContext] loadMembershipDetails: Found my membership - program_role: '\(myMembership.program_role)'")
                 loggedInUserProgramRole = myMembership.program_role
                 persistSession()
-                print("[ProgramContext] loadMembershipDetails: Updated loggedInUserProgramRole to '\(loggedInUserProgramRole)'")
-            } else {
-                print("[ProgramContext] loadMembershipDetails: Could not find my membership (userId: \(loggedInUserId ?? "nil"))")
             }
         } catch {
             errorMessage = error.localizedDescription
-            print("[ProgramContext] loadMembershipDetails error: \(error.localizedDescription)")
         }
     }
 
@@ -978,20 +963,15 @@ final class ProgramContext: ObservableObject {
     @MainActor
     func loadPendingInvites() async {
         guard let token = authToken, !token.isEmpty else {
-            print("[ProgramContext] loadPendingInvites: No auth token")
             return
         }
         do {
             if isGlobalAdmin {
-                print("[ProgramContext] loadPendingInvites: Fetching all invites (global_admin)")
                 pendingInvites = try await APIClient.shared.fetchAllInvites(token: token)
             } else {
-                print("[ProgramContext] loadPendingInvites: Fetching my invites (standard user)")
                 pendingInvites = try await APIClient.shared.fetchMyInvites(token: token)
             }
-            print("[ProgramContext] loadPendingInvites: Loaded \(pendingInvites.count) invites")
         } catch {
-            print("[ProgramContext] loadPendingInvites error: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
         }
     }

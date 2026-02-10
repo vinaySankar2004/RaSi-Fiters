@@ -1533,7 +1533,6 @@ private struct DailyHealthEditSheet: View {
         guard isFormValid else { return }
         isSaving = true
         errorMessage = nil
-
         do {
             try await programContext.updateDailyHealthLog(
                 memberId: memberId,
@@ -8211,7 +8210,6 @@ private struct AddWorkoutDetailView: View {
         let result = programContext.globalRole == "global_admin" ||
             programContext.loggedInUserProgramRole == "admin" ||
             programContext.loggedInUserProgramRole == "logger"
-        print("[AddWorkout] canSelectAnyMember: \(result) | globalRole: '\(programContext.globalRole)' | programRole: '\(programContext.loggedInUserProgramRole)'")
         return result
     }
 
@@ -8287,7 +8285,6 @@ private struct AddWorkoutDetailView: View {
 
     @ViewBuilder
     private var memberField: some View {
-        let _ = print("[AddWorkout] memberField rendering - members count: \(programContext.members.count), workouts count: \(programContext.workouts.count)")
         VStack(alignment: .leading, spacing: 6) {
             Text("Member")
                 .font(.subheadline.weight(.semibold))
@@ -8387,27 +8384,21 @@ private struct AddWorkoutDetailView: View {
     }
 
     private func ensureLookups() async {
-        print("[AddWorkout] ensureLookups called - globalRole: '\(programContext.globalRole)' | programRole: '\(programContext.loggedInUserProgramRole)'")
-        print("[AddWorkout] Before load - members: \(programContext.members.count), workouts: \(programContext.workouts.count)")
         let needsProgramRefresh = programContext.membersProgramId != programContext.programId
         if programContext.members.isEmpty || programContext.workouts.isEmpty || needsProgramRefresh {
             await programContext.loadLookupData()
-            print("[AddWorkout] After loadLookupData - members: \(programContext.members.count), workouts: \(programContext.workouts.count)")
         }
         if programContext.programId != nil {
             await programContext.loadProgramWorkouts()
-            print("[AddWorkout] After loadProgramWorkouts - programWorkouts: \(programContext.programWorkouts.count)")
         }
         // Ensure membership details (including program role) are loaded
         if programContext.membershipDetails.isEmpty || needsProgramRefresh {
             await programContext.loadMembershipDetails()
-            print("[AddWorkout] After loadMembershipDetails - programRole: '\(programContext.loggedInUserProgramRole)'")
         }
         // Auto-select logged-in user if they can only log for themselves
         if !canSelectAnyMember, selectedMember == nil {
             if let userId = programContext.loggedInUserId {
                 selectedMember = programContext.members.first { $0.id == userId }
-                print("[AddWorkout] Auto-selected self because canSelectAnyMember=false")
             }
         }
     }

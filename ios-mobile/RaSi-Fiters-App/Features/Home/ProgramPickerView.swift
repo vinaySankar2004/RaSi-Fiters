@@ -273,7 +273,6 @@ struct ProgramPickerView: View {
     }
 
     private func applyProgram(_ program: APIClient.ProgramDTO) {
-        print("[ProgramPicker] applyProgram called - program: \(program.name), my_role from API: \(program.my_role ?? "nil")")
         programContext.name = program.name
         programContext.status = (program.status ?? "Active")
         programContext.programId = program.id
@@ -282,9 +281,6 @@ struct ProgramPickerView: View {
         programContext.atRiskMembers = 0
         if let role = program.my_role {
             programContext.loggedInUserProgramRole = role
-            print("[ProgramPicker] Set loggedInUserProgramRole to: '\(role)'")
-        } else {
-            print("[ProgramPicker] WARNING: my_role is nil, loggedInUserProgramRole unchanged: '\(programContext.loggedInUserProgramRole)'")
         }
 
         let formatterIn = DateFormatter()

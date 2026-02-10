@@ -190,7 +190,6 @@ struct LoginView: View {
         do {
             let response = try await APIClient.shared.loginGlobal(identifier: identifier, password: password)
             let role = (response.globalRole ?? "").lowercased()
-            print("Token: \(response.token) | global_role: \(role)")
 
             // Store token and user info in shared context
             programContext.authToken = response.token
