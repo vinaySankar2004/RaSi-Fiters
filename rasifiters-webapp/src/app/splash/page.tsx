@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { BrandMark } from "@/components/BrandMark";
+import { useAuth } from "@/lib/auth/auth-provider";
 
 const headlineText = "Hi, welcome to RaSi Fiters";
 const subheadlineText =
@@ -12,10 +14,18 @@ const subheadlineText =
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function SplashPage() {
+  const router = useRouter();
+  const { session, isBootstrapping } = useAuth();
   const [headline, setHeadline] = useState("");
   const [subheadline, setSubheadline] = useState("");
   const [ctaVisible, setCtaVisible] = useState(false);
   const [headlineComplete, setHeadlineComplete] = useState(false);
+
+  useEffect(() => {
+    if (!isBootstrapping && session) {
+      router.replace("/programs");
+    }
+  }, [isBootstrapping, session, router]);
 
   useEffect(() => {
     let isMounted = true;

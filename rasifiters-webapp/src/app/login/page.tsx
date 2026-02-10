@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { BrandMark } from "@/components/BrandMark";
 import { login } from "@/lib/api/auth";
@@ -16,7 +16,7 @@ import { useClientSearchParams } from "@/lib/use-client-search-params";
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useClientSearchParams();
-  const { setSession } = useAuth();
+  const { setSession, session, isBootstrapping } = useAuth();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,6 +34,12 @@ export default function LoginPage() {
     redirectReason === "expired"
       ? "Your session expired. Please sign in again."
       : "We could not verify your session. Please sign in again.";
+
+  useEffect(() => {
+    if (!isBootstrapping && session) {
+      router.replace("/programs");
+    }
+  }, [isBootstrapping, session, router]);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
