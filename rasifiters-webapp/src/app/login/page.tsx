@@ -52,6 +52,7 @@ export default function LoginPage() {
       });
       const nextSession = {
         token: response.token,
+        refreshToken: response.refresh_token,
         user: {
           id: decoded?.id ?? response.member_id,
           username: decoded?.username ?? response.username,

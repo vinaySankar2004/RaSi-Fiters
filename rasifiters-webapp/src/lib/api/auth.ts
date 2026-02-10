@@ -18,6 +18,27 @@ export async function login(identifier: string, password: string) {
   });
 }
 
+export type RegisterResponse = {
+  message?: string;
+  member_id?: string;
+  username?: string;
+  member_name?: string;
+};
+
+export async function registerAccount(payload: {
+  first_name: string;
+  last_name: string;
+  username: string;
+  email: string;
+  password: string;
+  gender?: string;
+}) {
+  return apiRequest<RegisterResponse>("/auth/register", {
+    method: "POST",
+    body: payload
+  });
+}
+
 export type RefreshResponse = {
   token: string;
   refresh_token?: string;

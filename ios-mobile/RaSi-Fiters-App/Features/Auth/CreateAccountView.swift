@@ -18,6 +18,7 @@ struct CreateAccountView: View {
     @State private var isShowingAlert: Bool = false
     @State private var navigateToProgramPicker: Bool = false
     private let privacyPolicyURL = URL(string: "https://vinaysankar2004.github.io/RaSi-Fiters/")!
+    private let genderOptions = ["Female", "Male", "Non-binary", "Prefer not to say"]
 
     var body: some View {
         ZStack {
@@ -52,7 +53,7 @@ struct CreateAccountView: View {
                         inputField(title: "Last Name", text: $lastName, isSecure: false, accessory: nil)
                         inputField(title: "Username", text: $username, isSecure: false, accessory: nil)
                         inputField(title: "Email", text: $email, isSecure: false, accessory: nil)
-                        inputField(title: "Gender (optional)", text: $gender, isSecure: false, accessory: nil)
+                        genderPicker
 
                         inputField(
                             title: "Password",
@@ -205,6 +206,29 @@ struct CreateAccountView: View {
         Button(action: { isConfirmPasswordVisible.toggle() }) {
             Image(systemName: isConfirmPasswordVisible ? "eye.slash" : "eye")
                 .foregroundColor(Color(.secondaryLabel))
+        }
+    }
+
+    private var genderPicker: some View {
+        Menu {
+            ForEach(genderOptions, id: \.self) { option in
+                Button(option) { gender = option }
+            }
+        } label: {
+            HStack {
+                Text(gender.isEmpty ? "Gender (optional)" : gender)
+                    .foregroundColor(gender.isEmpty ? Color(.secondaryLabel) : Color(.label))
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down")
+                    .foregroundColor(Color(.secondaryLabel))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color(.systemGray3), lineWidth: 1)
+            )
         }
     }
 
