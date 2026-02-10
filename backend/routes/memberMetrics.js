@@ -63,7 +63,7 @@ const ensureProgramAccess = async (req, programId) => {
     if (req.user?.global_role === "global_admin") return true;
     if (!req.user?.id) return false;
     const membership = await ProgramMembership.findOne({
-        where: { program_id: programId, member_id: req.user.id }
+        where: { program_id: programId, member_id: req.user.id, status: "active" }
     });
     return Boolean(membership);
 };
@@ -129,7 +129,9 @@ router.get("/", authenticateToken, async (req, res) => {
         }
 
         // Load members in program (optionally filtered by memberId)
-        const memberWhere = memberId ? { program_id: programId, member_id: memberId } : { program_id: programId };
+        const memberWhere = memberId
+            ? { program_id: programId, member_id: memberId, status: "active" }
+            : { program_id: programId, status: "active" };
         const memberships = await ProgramMembership.findAll({
             where: memberWhere,
             include: [{

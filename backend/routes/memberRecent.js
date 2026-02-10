@@ -1,9 +1,18 @@
 const express = require("express");
 const { authenticateToken } = require("../middleware/auth");
-const { WorkoutLog, ProgramWorkout } = require("../models");
+const { WorkoutLog, ProgramWorkout, ProgramMembership } = require("../models");
 const { Op } = require("sequelize");
 
 const router = express.Router();
+
+const ensureActiveProgramAccess = async (req, programId) => {
+    if (req.user?.global_role === "global_admin") return true;
+    if (!req.user?.id) return false;
+    const membership = await ProgramMembership.findOne({
+        where: { program_id: programId, member_id: req.user.id, status: "active" }
+    });
+    return Boolean(membership);
+};
 
 router.get("/", authenticateToken, async (req, res) => {
     try {
@@ -19,6 +28,18 @@ router.get("/", authenticateToken, async (req, res) => {
         
         if (!programId || !memberId) {
             return res.status(400).json({ error: "programId and memberId are required." });
+        }
+
+        const hasAccess = await ensureActiveProgramAccess(req, programId);
+        if (!hasAccess) {
+            return res.status(403).json({ error: "Access denied. Active program membership required." });
+        }
+
+        const targetMembership = await ProgramMembership.findOne({
+            where: { program_id: programId, member_id: memberId, status: "active" }
+        });
+        if (!targetMembership) {
+            return res.status(404).json({ error: "Member is not enrolled in this program." });
         }
 
         // Build where clause with date filtering
@@ -98,7 +119,6 @@ router.get("/", authenticateToken, async (req, res) => {
 });
 
 module.exports = router;
-
 
 
 

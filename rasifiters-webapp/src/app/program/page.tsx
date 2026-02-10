@@ -69,8 +69,8 @@ export default function ProgramPage() {
       .join("");
   }, [session?.user.memberName, session?.user.username]);
 
-  const membershipDetails = membershipQuery.data ?? [];
-  const activeMembers = membershipDetails.filter((member) => member.is_active).length;
+  const membershipDetails = (membershipQuery.data ?? []).filter((member) => member.is_active);
+  const activeMembers = membershipDetails.length;
 
   const admins = membershipDetails.filter((member) => member.program_role === "admin");
   const loggers = membershipDetails.filter((member) => member.program_role === "logger");

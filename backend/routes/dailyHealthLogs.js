@@ -51,7 +51,7 @@ router.post("/", authenticateToken, async (req, res) => {
 
         if (!canLogForAny) {
             const requesterMembership = await ProgramMembership.findOne({
-                where: { program_id, member_id: requester?.id }
+                where: { program_id, member_id: requester?.id, status: "active" }
             });
 
             if (!requesterMembership) {
@@ -74,7 +74,7 @@ router.post("/", authenticateToken, async (req, res) => {
         }
 
         const targetMembership = await ProgramMembership.findOne({
-            where: { program_id, member_id: targetMemberId }
+            where: { program_id, member_id: targetMemberId, status: "active" }
         });
 
         if (!targetMembership) {
@@ -125,7 +125,7 @@ router.get("/", authenticateToken, async (req, res) => {
 
         if (!canLogForAny) {
             const requesterMembership = await ProgramMembership.findOne({
-                where: { program_id: programId, member_id: requester?.id }
+                where: { program_id: programId, member_id: requester?.id, status: "active" }
             });
 
             if (!requesterMembership) {
@@ -142,7 +142,7 @@ router.get("/", authenticateToken, async (req, res) => {
         }
 
         const targetMembership = await ProgramMembership.findOne({
-            where: { program_id: programId, member_id: memberId }
+            where: { program_id: programId, member_id: memberId, status: "active" }
         });
 
         if (!targetMembership) {
@@ -260,7 +260,7 @@ router.put("/", authenticateToken, async (req, res) => {
 
         if (!canLogForAny) {
             const requesterMembership = await ProgramMembership.findOne({
-                where: { program_id, member_id: requester?.id }
+                where: { program_id, member_id: requester?.id, status: "active" }
             });
 
             if (!requesterMembership) {
@@ -283,7 +283,7 @@ router.put("/", authenticateToken, async (req, res) => {
         }
 
         const targetMembership = await ProgramMembership.findOne({
-            where: { program_id, member_id: targetMemberId }
+            where: { program_id, member_id: targetMemberId, status: "active" }
         });
 
         if (!targetMembership) {
@@ -324,7 +324,7 @@ router.delete("/", authenticateToken, async (req, res) => {
 
         if (!canLogForAny) {
             const requesterMembership = await ProgramMembership.findOne({
-                where: { program_id, member_id: requester?.id }
+                where: { program_id, member_id: requester?.id, status: "active" }
             });
 
             if (!requesterMembership) {
@@ -347,7 +347,7 @@ router.delete("/", authenticateToken, async (req, res) => {
         }
 
         const targetMembership = await ProgramMembership.findOne({
-            where: { program_id, member_id: targetMemberId }
+            where: { program_id, member_id: targetMemberId, status: "active" }
         });
 
         if (!targetMembership) {

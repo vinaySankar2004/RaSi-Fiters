@@ -35,12 +35,16 @@ export default function MembersListPage() {
     enabled: !!token && !!programId
   });
 
+  const activeMembers = useMemo(() => {
+    return (membersQuery.data ?? []).filter((member) => member.status === "active");
+  }, [membersQuery.data]);
+
   const filtered = useMemo(() => {
     if (!membersQuery.data) return [];
-    if (!search.trim()) return membersQuery.data;
+    if (!search.trim()) return activeMembers;
     const query = search.trim().toLowerCase();
-    return membersQuery.data.filter((member) => member.member_name.toLowerCase().includes(query));
-  }, [membersQuery.data, search]);
+    return activeMembers.filter((member) => member.member_name.toLowerCase().includes(query));
+  }, [activeMembers, membersQuery.data, search]);
 
   return (
     <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">

@@ -51,7 +51,9 @@ export default function MemberDetailPage() {
   });
 
   const member = useMemo(() => {
-    return membersQuery.data?.find((item) => item.member_id === memberId) ?? null;
+    return membersQuery.data?.find(
+      (item) => item.member_id === memberId && item.status === "active"
+    ) ?? null;
   }, [membersQuery.data, memberId]);
 
   useEffect(() => {

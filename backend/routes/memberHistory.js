@@ -1,9 +1,18 @@
 const express = require("express");
 const { Op } = require("sequelize");
 const { authenticateToken } = require("../middleware/auth");
-const { WorkoutLog, Program } = require("../models");
+const { WorkoutLog, Program, ProgramMembership } = require("../models");
 
 const router = express.Router();
+
+const ensureActiveProgramAccess = async (req, programId) => {
+    if (req.user?.global_role === "global_admin") return true;
+    if (!req.user?.id) return false;
+    const membership = await ProgramMembership.findOne({
+        where: { program_id: programId, member_id: req.user.id, status: "active" }
+    });
+    return Boolean(membership);
+};
 
 // Reuse the same helpers as program timeline for consistent windows/labels
 const {
@@ -17,6 +26,18 @@ router.get("/", authenticateToken, async (req, res) => {
         const { programId, memberId, period = "week" } = req.query;
         if (!programId || !memberId) {
             return res.status(400).json({ error: "programId and memberId are required." });
+        }
+
+        const hasAccess = await ensureActiveProgramAccess(req, programId);
+        if (!hasAccess) {
+            return res.status(403).json({ error: "Access denied. Active program membership required." });
+        }
+
+        const targetMembership = await ProgramMembership.findOne({
+            where: { program_id: programId, member_id: memberId, status: "active" }
+        });
+        if (!targetMembership) {
+            return res.status(404).json({ error: "Member is not enrolled in this program." });
         }
 
         const { windowStart, windowEnd, bucketGranularity, label, labelMode } = await resolveTimelineWindow(period.toLowerCase(), programId);
@@ -64,7 +85,6 @@ router.get("/", authenticateToken, async (req, res) => {
 });
 
 module.exports = router;
-
 
 
 

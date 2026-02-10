@@ -856,12 +856,13 @@ final class ProgramContext: ObservableObject {
         }
         do {
             let data = try await APIClient.shared.fetchMembershipDetails(token: token, programId: pid)
-            membershipDetails = data
-            print("[ProgramContext] loadMembershipDetails: Received \(data.count) members")
+            let activeData = data.filter { $0.is_active }
+            membershipDetails = activeData
+            print("[ProgramContext] loadMembershipDetails: Received \(activeData.count) members")
 
             // Update logged-in user's program role
             if let userId = loggedInUserId,
-               let myMembership = data.first(where: { $0.member_id == userId }) {
+               let myMembership = activeData.first(where: { $0.member_id == userId }) {
                 print("[ProgramContext] loadMembershipDetails: Found my membership - program_role: '\(myMembership.program_role)'")
                 loggedInUserProgramRole = myMembership.program_role
                 persistSession()

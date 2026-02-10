@@ -46,11 +46,13 @@ export default function ManageRolesPage() {
     enabled: !!token && !!programId && isProgramAdmin
   });
 
-  const activeAdminCount = useMemo(() => {
-    return (membersQuery.data ?? []).filter(
-      (member) => member.program_role === "admin" && member.status === "active"
-    ).length;
+  const activeMembers = useMemo(() => {
+    return (membersQuery.data ?? []).filter((member) => member.status === "active");
   }, [membersQuery.data]);
+
+  const activeAdminCount = useMemo(() => {
+    return activeMembers.filter((member) => member.program_role === "admin").length;
+  }, [activeMembers]);
 
   const updateMutation = useMutation({
     mutationFn: (payload: { memberId: string; role: string }) =>
@@ -101,7 +103,7 @@ export default function ManageRolesPage() {
 
         {membersQuery.data && (
           <div className="space-y-4">
-            {membersQuery.data.map((member) => {
+            {activeMembers.map((member) => {
               const isLastActiveAdmin =
                 member.program_role === "admin" && member.status === "active" && activeAdminCount <= 1;
               return (

@@ -198,7 +198,7 @@ router.get("/details", authenticateToken, async (req, res) => {
         }
 
         const memberships = await ProgramMembership.findAll({
-            where: { program_id: programId },
+            where: { program_id: programId, status: "active" },
             include: [
                 {
                     model: Member,
