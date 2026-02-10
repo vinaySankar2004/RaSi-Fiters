@@ -499,6 +499,7 @@ function ProgramCard({
   const activeMembers = program.active_members ?? 0;
   const totalMembers = program.total_members ?? 0;
   const progress = totalMembers > 0 ? Math.min(activeMembers / totalMembers, 1) : 0;
+  const programStatusColor = statusColor(program.status ?? "active");
 
   return (
     <div
@@ -527,8 +528,8 @@ function ProgramCard({
 
       <div className="progress-track mt-4 h-2 w-full rounded-full">
         <div
-          className="h-2 rounded-full bg-rf-accent"
-          style={{ width: `${progress * 100}%` }}
+          className="h-2 rounded-full"
+          style={{ background: programStatusColor, width: `${progress * 100}%` }}
         />
       </div>
 
