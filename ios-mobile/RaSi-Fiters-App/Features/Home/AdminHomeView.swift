@@ -1362,6 +1362,7 @@ private struct DailyHealthEditSheet: View {
     let onSaved: () -> Void
 
     @State private var sleepHoursText: String
+    @State private var sleepMinutesText: String
     @State private var foodQuality: Int?
     @State private var isSaving = false
     @State private var errorMessage: String?
@@ -1371,27 +1372,58 @@ private struct DailyHealthEditSheet: View {
         self.memberId = memberId
         self.item = item
         self.onSaved = onSaved
-        _sleepHoursText = State(initialValue: item.sleepHours.map { String(format: "%.1f", $0) } ?? "")
+        let split = Self.splitSleepHours(item.sleepHours)
+        _sleepHoursText = State(initialValue: split.hours)
+        _sleepMinutesText = State(initialValue: split.minutes)
         _foodQuality = State(initialValue: item.foodQuality)
     }
 
-    private var trimmedSleepText: String {
+    private var trimmedSleepHoursText: String {
         sleepHoursText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var trimmedSleepMinutesText: String {
+        sleepMinutesText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasSleepInput: Bool {
+        !trimmedSleepHoursText.isEmpty || !trimmedSleepMinutesText.isEmpty
+    }
+
+    private var sleepHoursValue: Int? {
+        guard !trimmedSleepHoursText.isEmpty else { return nil }
+        return Int(trimmedSleepHoursText)
+    }
+
+    private var sleepMinutesValue: Int? {
+        guard !trimmedSleepMinutesText.isEmpty else { return nil }
+        return Int(trimmedSleepMinutesText)
+    }
+
+    private var isHoursValid: Bool {
+        trimmedSleepHoursText.isEmpty || (sleepHoursValue != nil && (0...24).contains(sleepHoursValue ?? 0))
+    }
+
+    private var isMinutesValid: Bool {
+        trimmedSleepMinutesText.isEmpty || (sleepMinutesValue != nil && (0...59).contains(sleepMinutesValue ?? 0))
+    }
+
     private var sleepValue: Double? {
-        guard !trimmedSleepText.isEmpty else { return nil }
-        return Double(trimmedSleepText)
+        guard hasSleepInput else { return nil }
+        guard isHoursValid && isMinutesValid else { return nil }
+        let hours = Double(sleepHoursValue ?? 0)
+        let minutes = Double(sleepMinutesValue ?? 0)
+        let total = hours + minutes / 60.0
+        guard total >= 0 && total <= 24 else { return nil }
+        return total
     }
 
     private var isSleepValid: Bool {
-        guard !trimmedSleepText.isEmpty else { return true }
-        guard let sleepValue else { return false }
-        return sleepValue >= 0 && sleepValue <= 24
+        !hasSleepInput || sleepValue != nil
     }
 
     private var hasAtLeastOneMetric: Bool {
-        (sleepValue != nil && !trimmedSleepText.isEmpty) || foodQuality != nil
+        sleepValue != nil || foodQuality != nil
     }
 
     private var isFormValid: Bool {
@@ -1411,15 +1443,36 @@ private struct DailyHealthEditSheet: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Sleep hours")
+                    Text("Sleep time")
                         .font(.subheadline.weight(.semibold))
-                    TextField("e.g. 7.5", text: $sleepHoursText)
-                        .keyboardType(.decimalPad)
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                    HStack(spacing: 12) {
+                        TextField("Hours", text: $sleepHoursText)
+                            .keyboardType(.numberPad)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                            .onChange(of: sleepHoursText) { newValue in
+                                let sanitized = sanitizeDigits(newValue)
+                                if sanitized != newValue {
+                                    sleepHoursText = sanitized
+                                }
+                            }
+                        TextField("Minutes", text: $sleepMinutesText)
+                            .keyboardType(.numberPad)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                            .onChange(of: sleepMinutesText) { newValue in
+                                let sanitized = sanitizeDigits(newValue)
+                                if sanitized != newValue {
+                                    sleepMinutesText = sanitized
+                                }
+                            }
+                    }
                     if !isSleepValid {
-                        Text("Sleep hours must be between 0 and 24.")
+                        Text("Sleep time must be between 0:00 and 24:00.")
                             .font(.footnote.weight(.semibold))
                             .foregroundColor(.appRed)
                     }
@@ -1496,6 +1549,27 @@ private struct DailyHealthEditSheet: View {
         }
 
         isSaving = false
+    }
+
+    private static func splitSleepHours(_ value: Double?) -> (hours: String, minutes: String) {
+        guard let value else { return ("", "") }
+        let clamped = min(max(value, 0), 24)
+        var hours = Int(clamped)
+        var minutes = Int((clamped - Double(hours)) * 60.0 + 0.5)
+        if minutes == 60 {
+            hours = min(hours + 1, 24)
+            minutes = 0
+        }
+        if hours >= 24 {
+            hours = 24
+            minutes = 0
+        }
+        return (String(hours), String(minutes))
+    }
+
+    private func sanitizeDigits(_ value: String) -> String {
+        let filtered = value.filter { $0.isNumber }
+        return String(filtered.prefix(2))
     }
 }
 
@@ -8346,6 +8420,7 @@ private struct AddDailyHealthDetailView: View {
     @State private var selectedMember: APIClient.MemberDTO?
     @State private var selectedDate: Date = Date()
     @State private var sleepHoursText: String = ""
+    @State private var sleepMinutesText: String = ""
     @State private var foodQuality: Int?
     @State private var isSaving = false
     @State private var errorMessage: String?
@@ -8358,23 +8433,52 @@ private struct AddDailyHealthDetailView: View {
         programContext.loggedInUserProgramRole == "logger"
     }
 
-    private var trimmedSleepText: String {
+    private var trimmedSleepHoursText: String {
         sleepHoursText.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var trimmedSleepMinutesText: String {
+        sleepMinutesText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasSleepInput: Bool {
+        !trimmedSleepHoursText.isEmpty || !trimmedSleepMinutesText.isEmpty
+    }
+
+    private var sleepHoursValue: Int? {
+        guard !trimmedSleepHoursText.isEmpty else { return nil }
+        return Int(trimmedSleepHoursText)
+    }
+
+    private var sleepMinutesValue: Int? {
+        guard !trimmedSleepMinutesText.isEmpty else { return nil }
+        return Int(trimmedSleepMinutesText)
+    }
+
+    private var isHoursValid: Bool {
+        trimmedSleepHoursText.isEmpty || (sleepHoursValue != nil && (0...24).contains(sleepHoursValue ?? 0))
+    }
+
+    private var isMinutesValid: Bool {
+        trimmedSleepMinutesText.isEmpty || (sleepMinutesValue != nil && (0...59).contains(sleepMinutesValue ?? 0))
+    }
+
     private var sleepValue: Double? {
-        guard !trimmedSleepText.isEmpty else { return nil }
-        return Double(trimmedSleepText)
+        guard hasSleepInput else { return nil }
+        guard isHoursValid && isMinutesValid else { return nil }
+        let hours = Double(sleepHoursValue ?? 0)
+        let minutes = Double(sleepMinutesValue ?? 0)
+        let total = hours + minutes / 60.0
+        guard total >= 0 && total <= 24 else { return nil }
+        return total
     }
 
     private var isSleepValid: Bool {
-        guard !trimmedSleepText.isEmpty else { return true }
-        guard let sleepValue else { return false }
-        return sleepValue >= 0 && sleepValue <= 24
+        !hasSleepInput || sleepValue != nil
     }
 
     private var hasAtLeastOneMetric: Bool {
-        (sleepValue != nil && !trimmedSleepText.isEmpty) || foodQuality != nil
+        sleepValue != nil || foodQuality != nil
     }
 
     private var isFormValid: Bool {
@@ -8451,15 +8555,36 @@ private struct AddDailyHealthDetailView: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Sleep hours")
+                Text("Sleep time")
                     .font(.subheadline.weight(.semibold))
-                TextField("e.g. 7.5", text: $sleepHoursText)
-                    .keyboardType(.decimalPad)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                HStack(spacing: 12) {
+                    TextField("Hours", text: $sleepHoursText)
+                        .keyboardType(.numberPad)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .onChange(of: sleepHoursText) { newValue in
+                            let sanitized = sanitizeDigits(newValue)
+                            if sanitized != newValue {
+                                sleepHoursText = sanitized
+                            }
+                        }
+                    TextField("Minutes", text: $sleepMinutesText)
+                        .keyboardType(.numberPad)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .onChange(of: sleepMinutesText) { newValue in
+                            let sanitized = sanitizeDigits(newValue)
+                            if sanitized != newValue {
+                                sleepMinutesText = sanitized
+                            }
+                        }
+                }
                 if !isSleepValid {
-                    Text("Sleep hours must be between 0 and 24.")
+                    Text("Sleep time must be between 0:00 and 24:00.")
                         .font(.footnote.weight(.semibold))
                         .foregroundColor(.appRed)
                 }
@@ -8546,20 +8671,13 @@ private struct AddDailyHealthDetailView: View {
         formatter.dateFormat = "yyyy-MM-dd"
         let dateString = formatter.string(from: selectedDate)
 
-        let sleepHours: Double?
-        if trimmedSleepText.isEmpty {
-            sleepHours = nil
-        } else {
-            sleepHours = Double(trimmedSleepText)
-        }
-
         do {
             try await APIClient.shared.addDailyHealthLog(
                 token: token,
                 programId: programId,
                 memberId: member.id,
                 logDate: dateString,
-                sleepHours: sleepHours,
+                sleepHours: sleepValue,
                 foodQuality: foodQuality
             )
             showSuccessAlert = true
@@ -8587,6 +8705,11 @@ private struct AddDailyHealthDetailView: View {
                 selectedMember = fallback
             }
         }
+    }
+
+    private func sanitizeDigits(_ value: String) -> String {
+        let filtered = value.filter { $0.isNumber }
+        return String(filtered.prefix(2))
     }
 }
 

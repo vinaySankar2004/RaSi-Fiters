@@ -53,7 +53,8 @@ export default function MemberHealthPage() {
   const [endDate, setEndDate] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [editTarget, setEditTarget] = useState<MemberHealthItem | null>(null);
-  const [editSleep, setEditSleep] = useState("");
+  const [editSleepHours, setEditSleepHours] = useState("");
+  const [editSleepMinutes, setEditSleepMinutes] = useState("");
   const [editDiet, setEditDiet] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -126,6 +127,29 @@ export default function MemberHealthPage() {
     return `${startDate || "Start"} – ${endDate || "End"}`;
   }, [startDate, endDate]);
 
+  const parseSleepInput = (hoursText: string, minutesText: string) => {
+    const trimmedHours = hoursText.trim();
+    const trimmedMinutes = minutesText.trim();
+    const hasInput = trimmedHours !== "" || trimmedMinutes !== "";
+    if (!hasInput) {
+      return { hasInput: false, sleepValue: null as number | null, isValid: true };
+    }
+    const hoursValue = trimmedHours === "" ? 0 : Number(trimmedHours);
+    const minutesValue = trimmedMinutes === "" ? 0 : Number(trimmedMinutes);
+    const hoursValid =
+      trimmedHours === "" || (!Number.isNaN(hoursValue) && Number.isInteger(hoursValue) && hoursValue >= 0 && hoursValue <= 24);
+    const minutesValid =
+      trimmedMinutes === "" || (!Number.isNaN(minutesValue) && Number.isInteger(minutesValue) && minutesValue >= 0 && minutesValue < 60);
+    if (!hoursValid || !minutesValid) {
+      return { hasInput: true, sleepValue: null as number | null, isValid: false };
+    }
+    const total = hoursValue + minutesValue / 60;
+    const isValid = total >= 0 && total <= 24;
+    return { hasInput: true, sleepValue: isValid ? total : null, isValid };
+  };
+
+  const sleepInput = parseSleepInput(editSleepHours, editSleepMinutes);
+
   const handleExport = () => {
     if (!healthQuery.data || healthQuery.data.items.length === 0) return;
     const filename = `Health_${memberName.replace(/\s+/g, "")}_${startDate || "all"}_to_${endDate || "today"}.csv`;
@@ -137,25 +161,27 @@ export default function MemberHealthPage() {
   };
 
   const openEdit = (item: MemberHealthItem) => {
+    const split = splitSleepHours(item.sleepHours);
     setEditTarget(item);
-    setEditSleep(item.sleepHours !== null && item.sleepHours !== undefined ? String(item.sleepHours) : "");
+    setEditSleepHours(split.hours);
+    setEditSleepMinutes(split.minutes);
     setEditDiet(item.foodQuality !== null && item.foodQuality !== undefined ? String(item.foodQuality) : "");
     setErrorMessage(null);
   };
 
   const submitEdit = () => {
     if (!editTarget) return;
-    const sleepValue = editSleep.trim() === "" ? null : Number(editSleep);
     const dietValue = editDiet.trim() === "" ? null : Number(editDiet);
-    if (
-      (sleepValue === null || Number.isNaN(sleepValue)) &&
-      (dietValue === null || Number.isNaN(dietValue))
-    ) {
-      setErrorMessage("Provide sleep hours or diet quality before saving.");
+    if (!sleepInput.isValid) {
+      setErrorMessage("Sleep time must be between 0:00 and 24:00.");
+      return;
+    }
+    if (!sleepInput.hasInput && (dietValue === null || Number.isNaN(dietValue))) {
+      setErrorMessage("Provide sleep time or diet quality before saving.");
       return;
     }
     updateMutation.mutate({
-      sleep_hours: Number.isNaN(sleepValue) ? null : sleepValue,
+      sleep_hours: sleepInput.sleepValue,
       food_quality: Number.isNaN(dietValue) ? null : dietValue
     });
   };
@@ -320,17 +346,32 @@ export default function MemberHealthPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-semibold text-rf-text">Sleep hours</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="24"
-                  value={editSleep}
-                  onChange={(event) => setEditSleep(event.target.value)}
-                  placeholder="e.g. 7.5"
-                  className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-                />
+                <label className="text-sm font-semibold text-rf-text">Sleep time</label>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <input
+                    value={editSleepHours}
+                    onChange={(event) => {
+                      const next = event.target.value.replace(/\D/g, "").slice(0, 2);
+                      setEditSleepHours(next);
+                    }}
+                    placeholder="Hours"
+                    inputMode="numeric"
+                    className="input-shell w-full rounded-2xl px-4 py-3 text-sm font-medium"
+                  />
+                  <input
+                    value={editSleepMinutes}
+                    onChange={(event) => {
+                      const next = event.target.value.replace(/\D/g, "").slice(0, 2);
+                      setEditSleepMinutes(next);
+                    }}
+                    placeholder="Minutes"
+                    inputMode="numeric"
+                    className="input-shell w-full rounded-2xl px-4 py-3 text-sm font-medium"
+                  />
+                </div>
+                {!sleepInput.isValid && (
+                  <p className="mt-2 text-xs font-semibold text-rf-danger">Sleep time must be between 0:00 and 24:00.</p>
+                )}
               </div>
               <Select
                 label="Diet quality"
@@ -384,6 +425,24 @@ function Modal({ open, onClose, children }: { open: boolean; onClose: () => void
       <div className="relative z-10 flex w-full justify-center overflow-visible">{children}</div>
     </div>
   );
+}
+
+function splitSleepHours(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return { hours: "", minutes: "" };
+  }
+  const clamped = Math.max(0, Math.min(24, value));
+  let hours = Math.floor(clamped);
+  let minutes = Math.round((clamped - hours) * 60);
+  if (minutes === 60) {
+    hours = Math.min(24, hours + 1);
+    minutes = 0;
+  }
+  if (hours >= 24) {
+    hours = 24;
+    minutes = 0;
+  }
+  return { hours: String(hours), minutes: String(minutes) };
 }
 
 function sleepLabel(value: number | null) {

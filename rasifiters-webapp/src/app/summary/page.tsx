@@ -726,6 +726,7 @@ function LogDailyHealthForm({
   const [memberId, setMemberId] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [sleepHours, setSleepHours] = useState("");
+  const [sleepMinutes, setSleepMinutes] = useState("");
   const [foodQuality, setFoodQuality] = useState("");
 
   useEffect(() => {
@@ -740,10 +741,23 @@ function LogDailyHealthForm({
     loadLookups();
   }, [token, programId, canSelectAnyMember, userId]);
 
-  const sleepValue = sleepHours.trim() === "" ? null : Number(sleepHours);
+  const trimmedHours = sleepHours.trim();
+  const trimmedMinutes = sleepMinutes.trim();
+  const hasSleepInput = trimmedHours !== "" || trimmedMinutes !== "";
+  const hoursProvided = trimmedHours !== "";
+  const minutesProvided = trimmedMinutes !== "";
+  const hoursValue = hoursProvided ? Number(trimmedHours) : 0;
+  const minutesValue = minutesProvided ? Number(trimmedMinutes) : 0;
+  const hoursValid =
+    !hoursProvided || (!Number.isNaN(hoursValue) && Number.isInteger(hoursValue) && hoursValue >= 0 && hoursValue <= 24);
+  const minutesValid =
+    !minutesProvided || (!Number.isNaN(minutesValue) && Number.isInteger(minutesValue) && minutesValue >= 0 && minutesValue < 60);
+  const sleepTotal =
+    hasSleepInput && hoursValid && minutesValid ? hoursValue + minutesValue / 60 : null;
+  const sleepValue = hasSleepInput ? sleepTotal : null;
   const foodValue = foodQuality.trim() === "" ? null : Number(foodQuality);
   const hasMetric = sleepValue !== null || foodValue !== null;
-  const sleepValid = sleepValue === null || (sleepValue >= 0 && sleepValue <= 24);
+  const sleepValid = !hasSleepInput || (sleepTotal !== null && sleepTotal >= 0 && sleepTotal <= 24);
 
   const canSubmit = hasMetric && sleepValid && (!canSelectAnyMember || memberId);
 
@@ -793,14 +807,32 @@ function LogDailyHealthForm({
         </div>
 
         <div>
-          <label className="text-sm font-semibold text-rf-text">Sleep hours</label>
-          <input
-            value={sleepHours}
-            onChange={(event) => setSleepHours(event.target.value)}
-            className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-            placeholder="e.g. 7.5"
-          />
-          {!sleepValid && <p className="mt-2 text-xs font-semibold text-rf-danger">Sleep hours must be between 0 and 24.</p>}
+          <label className="text-sm font-semibold text-rf-text">Sleep time</label>
+          <div className="mt-2 grid grid-cols-2 gap-3">
+            <input
+              value={sleepHours}
+              onChange={(event) => {
+                const next = event.target.value.replace(/\D/g, "").slice(0, 2);
+                setSleepHours(next);
+              }}
+              className="input-shell w-full rounded-2xl px-4 py-3 text-sm font-medium"
+              placeholder="Hours"
+              inputMode="numeric"
+            />
+            <input
+              value={sleepMinutes}
+              onChange={(event) => {
+                const next = event.target.value.replace(/\D/g, "").slice(0, 2);
+                setSleepMinutes(next);
+              }}
+              className="input-shell w-full rounded-2xl px-4 py-3 text-sm font-medium"
+              placeholder="Minutes"
+              inputMode="numeric"
+            />
+          </div>
+          {!sleepValid && (
+            <p className="mt-2 text-xs font-semibold text-rf-danger">Sleep time must be between 0:00 and 24:00.</p>
+          )}
         </div>
 
         <Select

@@ -246,6 +246,23 @@ export default function ProgramPage() {
               </div>
             </SectionCard>
 
+            {canLeaveProgram && (
+              <button
+                type="button"
+                onClick={() => setShowLeaveConfirm(true)}
+                className="flex w-full items-center gap-4 rounded-3xl border border-rf-border bg-rf-surface-muted px-5 py-4 text-left text-sm font-semibold text-rf-text shadow-sm transition hover:border-rf-text"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200 text-gray-600">
+                  ↩︎
+                </span>
+                <div>
+                  <p>Leave Program</p>
+                  <p className="text-xs text-rf-text-muted">Your data will be preserved</p>
+                </div>
+                <span className="ml-auto text-rf-text-muted">›</span>
+              </button>
+            )}
+
             <MyAccountSection onSignOut={signOut} />
           </div>
         ) : (
