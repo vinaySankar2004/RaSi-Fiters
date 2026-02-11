@@ -5025,7 +5025,6 @@ private struct WorkoutTypePopularityCard: View {
 
     @State private var metric: WorkoutPopularityMetric = .count
     @State private var showAll = false
-    @State private var includeTopCategory = true
 
     private var isCompact: Bool {
         horizontalSizeClass == .compact
@@ -5035,20 +5034,11 @@ private struct WorkoutTypePopularityCard: View {
         workoutPopularitySorted(types: types, metric: metric)
     }
 
-    private var outlier: WorkoutPopularityOutlier {
-        workoutPopularityOutlier(sortedTypes: sortedTypes, metric: metric)
-    }
-
-    private var filteredTypes: [APIClient.WorkoutTypeDTO] {
-        guard isCompact, outlier.isOutlier, !includeTopCategory else { return sortedTypes }
-        return Array(sortedTypes.dropFirst())
-    }
-
     private var displayTypes: [APIClient.WorkoutTypeDTO] {
         if isCompact && !showAll {
-            return Array(filteredTypes.prefix(6))
+            return Array(sortedTypes.prefix(6))
         }
-        return filteredTypes
+        return sortedTypes
     }
 
     private var maxValue: Double {
@@ -5080,21 +5070,13 @@ private struct WorkoutTypePopularityCard: View {
             } else {
                 SegmentedMetricPicker(metrics: WorkoutPopularityMetric.allCases, selection: $metric)
 
-                if isCompact && outlier.isOutlier, let top = outlier.topType {
-                    OutlierToggle(
-                        topLabel: top.workout_name,
-                        topValue: metric.formattedValue(for: top),
-                        includeTop: $includeTopCategory
-                    )
-                }
-
                 Text(metric.axisLabel)
                     .font(.caption.weight(.semibold))
                     .foregroundColor(Color(.secondaryLabel))
 
                 RankedBarList(rows: rows, maxValue: maxValue)
 
-                if isCompact && filteredTypes.count > 6 {
+                if isCompact && sortedTypes.count > 6 {
                     Button(showAll ? "Show top 6" : "Show all") {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             showAll.toggle()
@@ -5118,19 +5100,7 @@ private struct WorkoutTypePopularityCard: View {
         )
         .shadow(color: Color(.black).opacity(0.06), radius: 10, x: 0, y: 6)
         .animation(.easeInOut(duration: 0.2), value: metric)
-        .animation(.easeInOut(duration: 0.2), value: includeTopCategory)
         .animation(.easeInOut(duration: 0.2), value: showAll)
-        .onAppear { resetOutlierToggle() }
-        .onChange(of: metric) { _ in resetOutlierToggle() }
-        .onChange(of: types.count) { _ in resetOutlierToggle() }
-    }
-
-    private func resetOutlierToggle() {
-        guard isCompact else {
-            includeTopCategory = true
-            return
-        }
-        includeTopCategory = !outlier.isOutlier
     }
 }
 

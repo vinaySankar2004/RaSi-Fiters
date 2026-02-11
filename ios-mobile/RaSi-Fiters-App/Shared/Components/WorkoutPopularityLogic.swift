@@ -46,31 +46,11 @@ enum WorkoutPopularityMetric: String, CaseIterable, Identifiable {
     }
 }
 
-struct WorkoutPopularityOutlier {
-    let isOutlier: Bool
-    let topType: APIClient.WorkoutTypeDTO?
-    let topValue: Double
-    let topLabel: String
-}
-
 func workoutPopularitySorted(
     types: [APIClient.WorkoutTypeDTO],
     metric: WorkoutPopularityMetric
 ) -> [APIClient.WorkoutTypeDTO] {
     types.sorted { metric.value(for: $0) > metric.value(for: $1) }
-}
-
-func workoutPopularityOutlier(
-    sortedTypes: [APIClient.WorkoutTypeDTO],
-    metric: WorkoutPopularityMetric,
-    threshold: Double = 3.0
-) -> WorkoutPopularityOutlier {
-    let top = sortedTypes.first
-    let topValue = top.map { metric.value(for: $0) } ?? 0
-    let secondValue = sortedTypes.dropFirst().first.map { metric.value(for: $0) } ?? 0
-    let isOutlier = secondValue > 0 ? topValue >= (threshold * secondValue) : topValue > 0
-    let label = top.map { "\(metric.formattedValue(for: $0))" } ?? ""
-    return WorkoutPopularityOutlier(isOutlier: isOutlier, topType: top, topValue: topValue, topLabel: label)
 }
 
 func workoutTypePaletteColor(for name: String) -> Color {

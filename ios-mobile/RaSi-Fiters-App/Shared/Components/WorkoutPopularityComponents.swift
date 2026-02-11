@@ -14,30 +14,6 @@ struct SegmentedMetricPicker: View {
     }
 }
 
-struct OutlierToggle: View {
-    let topLabel: String
-    let topValue: String
-    @Binding var includeTop: Bool
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Toggle("Include top category", isOn: $includeTop)
-                .tint(.appOrange)
-                .font(.subheadline.weight(.semibold))
-
-            if !includeTop {
-                Text("Top category: \(topLabel) \(topValue)")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundColor(Color(.secondaryLabel))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
-            }
-        }
-    }
-}
-
 struct RankedBarList: View {
     struct RowItem: Identifiable {
         let id: String

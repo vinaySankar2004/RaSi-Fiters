@@ -445,10 +445,8 @@ function WorkoutTypePopularityCard({
   types: WorkoutTypePopularity[];
   isLoading: boolean;
 }) {
-  const isCompact = useIsCompact();
   const [metric, setMetric] = useState<PopularityMetricKey>("count");
   const [showAll, setShowAll] = useState(false);
-  const [includeTopCategory, setIncludeTopCategory] = useState(true);
 
   const metricConfig = POPULARITY_METRICS.find((item) => item.key === metric) ?? POPULARITY_METRICS[0];
 
@@ -456,36 +454,10 @@ function WorkoutTypePopularityCard({
     return [...types].sort((a, b) => metricValue(metric, b) - metricValue(metric, a));
   }, [types, metric]);
 
-  const outlier = useMemo(() => {
-    const top = sortedTypes[0];
-    const second = sortedTypes[1];
-    const topValue = top ? metricValue(metric, top) : 0;
-    const secondValue = second ? metricValue(metric, second) : 0;
-    const isOutlier = secondValue > 0 ? topValue >= 3 * secondValue : topValue > 0;
-    return {
-      isOutlier,
-      topType: top,
-      topValue
-    };
-  }, [sortedTypes, metric]);
-
-  useEffect(() => {
-    if (!isCompact) {
-      setIncludeTopCategory(true);
-      return;
-    }
-    setIncludeTopCategory(!outlier.isOutlier);
-  }, [metric, types.length, isCompact, outlier.isOutlier]);
-
-  const filteredTypes = useMemo(() => {
-    if (!isCompact || !outlier.isOutlier || includeTopCategory) return sortedTypes;
-    return sortedTypes.slice(1);
-  }, [sortedTypes, isCompact, outlier.isOutlier, includeTopCategory]);
-
   const displayTypes = useMemo(() => {
-    if (!showAll) return filteredTypes.slice(0, 10);
-    return filteredTypes;
-  }, [filteredTypes, showAll]);
+    if (!showAll) return sortedTypes.slice(0, 10);
+    return sortedTypes;
+  }, [sortedTypes, showAll]);
 
   const maxValue = Math.max(1, ...displayTypes.map((item) => metricValue(metric, item)));
 
@@ -524,22 +496,6 @@ function WorkoutTypePopularityCard({
             ))}
           </div>
 
-          {isCompact && outlier.isOutlier && outlier.topType && (
-            <div className="mt-4 flex items-center justify-between rounded-2xl bg-rf-surface-muted px-4 py-3 text-xs">
-              <div>
-                <p className="font-semibold text-rf-text">{outlier.topType.workout_name}</p>
-                <p className="text-rf-text-muted">{metricFormattedValue(metric, outlier.topType)}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIncludeTopCategory((prev) => !prev)}
-                className="pill-button rounded-full px-3 py-1 text-xs font-semibold text-rf-text"
-              >
-                {includeTopCategory ? "Exclude" : "Include"}
-              </button>
-            </div>
-          )}
-
           <p className="mt-4 text-xs font-semibold text-rf-text-muted">{metricConfig.axisLabel}</p>
           <div className="mt-3 space-y-3">
             {displayTypes.map((item) => {
@@ -563,7 +519,7 @@ function WorkoutTypePopularityCard({
             })}
           </div>
 
-          {filteredTypes.length > 10 && (
+          {sortedTypes.length > 10 && (
             <button
               type="button"
               onClick={() => setShowAll((prev) => !prev)}
@@ -680,20 +636,6 @@ function metricFormattedValue(metric: PopularityMetricKey, type: WorkoutTypePopu
     default:
       return `${type.sessions}`;
   }
-}
-
-function useIsCompact() {
-  const [isCompact, setIsCompact] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 640px)");
-    const update = () => setIsCompact(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
-  return isCompact;
 }
 
 function workoutTypeColor(name: string) {
