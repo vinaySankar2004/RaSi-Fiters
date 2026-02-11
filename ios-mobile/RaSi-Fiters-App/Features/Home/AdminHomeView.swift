@@ -4078,6 +4078,7 @@ struct MyProfileView: View {
     @State private var firstName: String = ""
     @State private var lastName: String = ""
     @State private var gender: String = ""
+    @State private var didEditGender = false
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var showSuccessAlert = false
@@ -4142,9 +4143,15 @@ struct MyProfileView: View {
                             .font(.subheadline.weight(.semibold))
                         Menu {
                             ForEach(["Male", "Female", "Non-binary", "Prefer not to say"], id: \.self) { option in
-                                Button(option) { gender = option }
+                                Button(option) {
+                                    gender = option
+                                    didEditGender = true
+                                }
                             }
-                            Button("Clear") { gender = "" }
+                            Button("Clear") {
+                                gender = ""
+                                didEditGender = true
+                            }
                         } label: {
                             HStack {
                                 Text(gender.isEmpty ? "Select gender" : gender)
@@ -4235,6 +4242,11 @@ struct MyProfileView: View {
                 firstName = parts.first.map(String.init) ?? ""
                 lastName = parts.count > 1 ? String(parts[1]) : ""
             }
+            gender = programContext.loggedInUserGender ?? ""
+        }
+        .onChange(of: programContext.loggedInUserGender) { newValue in
+            guard !didEditGender else { return }
+            gender = newValue ?? ""
         }
     }
 

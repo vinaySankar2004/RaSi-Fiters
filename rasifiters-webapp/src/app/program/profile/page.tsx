@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { deleteAccount as deleteAccountApi } from "@/lib/api/auth";
-import { fetchMemberProfile, updateMemberProfile } from "@/lib/api/members";
+import { fetchMemberProfile, updateMemberProfile, type MemberProfile } from "@/lib/api/members";
 import { BackButton } from "@/components/BackButton";
 import { useActiveProgram } from "@/lib/use-active-program";
 
@@ -14,6 +14,7 @@ const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Prefer not to say"] as 
 export default function ProfilePage() {
   const router = useRouter();
   const { session, isBootstrapping, setSession, signOut } = useAuth();
+  const queryClient = useQueryClient();
   const token = session?.token ?? "";
   const program = useActiveProgram();
   const fallbackHref = program?.id ? "/program" : "/programs";
@@ -31,6 +32,7 @@ export default function ProfilePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const normalizedGender = gender.trim();
 
   useEffect(() => {
     if (!isBootstrapping && !session?.token) {
@@ -58,12 +60,24 @@ export default function ProfilePage() {
       updateMemberProfile(token, session?.user.id ?? "", {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        gender: gender || null
+        gender: normalizedGender.length > 0 ? normalizedGender : null
       }),
     onSuccess: (data) => {
       setShowSuccess(true);
+      setGender(normalizedGender);
       if (session) {
         const updatedName = data.member_name ?? `${firstName.trim()} ${lastName.trim()}`.trim();
+        queryClient.setQueryData<MemberProfile | undefined>(
+          ["account", "profile", session.user.id],
+          (previous) =>
+            previous
+              ? {
+                  ...previous,
+                  member_name: updatedName,
+                  gender: normalizedGender.length > 0 ? normalizedGender : null
+                }
+              : previous
+        );
         setSession({
           ...session,
           user: {

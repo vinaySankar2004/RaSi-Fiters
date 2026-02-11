@@ -73,6 +73,7 @@ final class ProgramContext: ObservableObject {
     @Published var loggedInUserId: String?
     @Published var loggedInUserName: String?
     @Published var loggedInUsername: String?
+    @Published var loggedInUserGender: String?
     @Published var loggedInUserProgramRole: String = "member" // "admin" or "member" in current program
     
     // Membership details for program management
@@ -854,6 +855,7 @@ final class ProgramContext: ObservableObject {
             if let userId = loggedInUserId,
                let myMembership = activeData.first(where: { $0.member_id == userId }) {
                 loggedInUserProgramRole = myMembership.program_role
+                loggedInUserGender = myMembership.gender
                 persistSession()
             }
         } catch {
@@ -951,6 +953,24 @@ final class ProgramContext: ObservableObject {
             } else if let last = lastName {
                 let currentFirst = loggedInUserName?.split(separator: " ").first.map(String.init) ?? ""
                 loggedInUserName = "\(currentFirst) \(last)".trimmingCharacters(in: .whitespaces)
+            }
+            loggedInUserGender = gender
+            if let index = membershipDetails.firstIndex(where: { $0.member_id == memberId }) {
+                let current = membershipDetails[index]
+                let updatedName = loggedInUserName ?? current.member_name
+                membershipDetails[index] = APIClient.MembershipDetailDTO(
+                    member_id: current.member_id,
+                    member_name: updatedName,
+                    username: current.username,
+                    gender: loggedInUserGender,
+                    date_of_birth: current.date_of_birth,
+                    date_joined: current.date_joined,
+                    global_role: current.global_role,
+                    program_role: current.program_role,
+                    is_active: current.is_active,
+                    status: current.status,
+                    joined_at: current.joined_at
+                )
             }
             persistSession()
         }
@@ -1147,6 +1167,7 @@ final class ProgramContext: ObservableObject {
         static let userId = "session.userId"
         static let userName = "session.userName"
         static let username = "session.username"
+        static let userGender = "session.userGender"
         static let globalRole = "session.globalRole"
         static let programId = "session.programId"
         static let programRole = "session.programRole"
@@ -1176,6 +1197,7 @@ final class ProgramContext: ObservableObject {
         loggedInUserId = defaults.string(forKey: SessionDefaultsKeys.userId)
         loggedInUserName = defaults.string(forKey: SessionDefaultsKeys.userName)
         loggedInUsername = defaults.string(forKey: SessionDefaultsKeys.username)
+        loggedInUserGender = defaults.string(forKey: SessionDefaultsKeys.userGender)
         globalRole = defaults.string(forKey: SessionDefaultsKeys.globalRole) ?? globalRole
         programId = defaults.string(forKey: SessionDefaultsKeys.programId)
         loggedInUserProgramRole = defaults.string(forKey: SessionDefaultsKeys.programRole) ?? loggedInUserProgramRole
@@ -1192,6 +1214,7 @@ final class ProgramContext: ObservableObject {
         setDefault(defaults, value: loggedInUserId, key: SessionDefaultsKeys.userId)
         setDefault(defaults, value: loggedInUserName, key: SessionDefaultsKeys.userName)
         setDefault(defaults, value: loggedInUsername, key: SessionDefaultsKeys.username)
+        setDefault(defaults, value: loggedInUserGender, key: SessionDefaultsKeys.userGender)
         setDefault(defaults, value: globalRole, key: SessionDefaultsKeys.globalRole)
         setDefault(defaults, value: programId, key: SessionDefaultsKeys.programId)
         setDefault(defaults, value: loggedInUserProgramRole, key: SessionDefaultsKeys.programRole)
@@ -1203,6 +1226,7 @@ final class ProgramContext: ObservableObject {
         defaults.removeObject(forKey: SessionDefaultsKeys.userId)
         defaults.removeObject(forKey: SessionDefaultsKeys.userName)
         defaults.removeObject(forKey: SessionDefaultsKeys.username)
+        defaults.removeObject(forKey: SessionDefaultsKeys.userGender)
         defaults.removeObject(forKey: SessionDefaultsKeys.globalRole)
         defaults.removeObject(forKey: SessionDefaultsKeys.programId)
         defaults.removeObject(forKey: SessionDefaultsKeys.programRole)
@@ -1399,6 +1423,7 @@ final class ProgramContext: ObservableObject {
         loggedInUserId = nil
         loggedInUserName = nil
         loggedInUsername = nil
+        loggedInUserGender = nil
         loggedInUserProgramRole = "member"
         globalRole = "standard"
         programId = nil
