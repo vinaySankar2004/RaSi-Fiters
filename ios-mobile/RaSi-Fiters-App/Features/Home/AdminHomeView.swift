@@ -508,9 +508,9 @@ private struct MemberRecentDetail: View {
             Text(editSuccessMessage ?? "Workout updated.")
         }
         .task { await loadWorkouts() }
-        .onChange(of: sortField) { _ in Task { await loadWorkouts() } }
-        .onChange(of: sortDirection) { _ in Task { await loadWorkouts() } }
-        .onChange(of: filters) { _ in Task { await loadWorkouts() } }
+        .onChange(of: sortField) { _, _ in Task { await loadWorkouts() } }
+        .onChange(of: sortDirection) { _, _ in Task { await loadWorkouts() } }
+        .onChange(of: filters) { _, _ in Task { await loadWorkouts() } }
     }
 
     private var controls: some View {
@@ -996,9 +996,9 @@ private struct MemberHealthDetail: View {
             Text(deleteErrorMessage ?? "Unable to delete daily health log.")
         }
         .task { await loadHealthLogs() }
-        .onChange(of: sortField) { _ in Task { await loadHealthLogs() } }
-        .onChange(of: sortDirection) { _ in Task { await loadHealthLogs() } }
-        .onChange(of: filters) { _ in Task { await loadHealthLogs() } }
+        .onChange(of: sortField) { _, _ in Task { await loadHealthLogs() } }
+        .onChange(of: sortDirection) { _, _ in Task { await loadHealthLogs() } }
+        .onChange(of: filters) { _, _ in Task { await loadHealthLogs() } }
     }
 
     private var controls: some View {
@@ -1452,7 +1452,7 @@ private struct DailyHealthEditSheet: View {
                             .frame(maxWidth: .infinity)
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
-                            .onChange(of: sleepHoursText) { newValue in
+                            .onChange(of: sleepHoursText) { _, newValue in
                                 let sanitized = sanitizeDigits(newValue)
                                 if sanitized != newValue {
                                     sleepHoursText = sanitized
@@ -1464,7 +1464,7 @@ private struct DailyHealthEditSheet: View {
                             .frame(maxWidth: .infinity)
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
-                            .onChange(of: sleepMinutesText) { newValue in
+                            .onChange(of: sleepMinutesText) { _, newValue in
                                 let sanitized = sanitizeDigits(newValue)
                                 if sanitized != newValue {
                                     sleepMinutesText = sanitized
@@ -1847,10 +1847,10 @@ private struct AdminSummaryTab: View {
             await load()
             restoreOrder()
         }
-        .onChange(of: period) { _ in
+        .onChange(of: period) { _, _ in
             Task { await load() }
         }
-        .onChange(of: programContext.programId) { _ in
+        .onChange(of: programContext.programId) { _, _ in
             restoreOrder()
             Task { await programContext.loadLookupData() }
         }
@@ -2077,16 +2077,16 @@ private struct AdminMembersTab: View {
         .task {
             applyDefaultSelectionIfNeeded()
         }
-        .onChange(of: programContext.programId) { _ in
+        .onChange(of: programContext.programId) { _, _ in
             if !programContext.isGlobalAdmin {
                 selectedMember = nil
             }
             applyDefaultSelectionIfNeeded()
         }
-        .onChange(of: programContext.members.count) { _ in
+        .onChange(of: programContext.members.count) { _, _ in
             applyDefaultSelectionIfNeeded()
         }
-        .onChange(of: programContext.loggedInUserId) { _ in
+        .onChange(of: programContext.loggedInUserId) { _, _ in
             if !programContext.isGlobalAdmin {
                 selectedMember = nil
             }
@@ -2231,7 +2231,7 @@ private struct StandardMembersTab: View {
         .task {
             await loadUserData()
         }
-        .onChange(of: programContext.programId) { _ in
+        .onChange(of: programContext.programId) { _, _ in
             Task {
                 await loadUserData()
             }
@@ -2361,7 +2361,7 @@ private struct StandardWorkoutTypesTab: View {
         .task {
             await loadUserWorkoutTypes()
         }
-        .onChange(of: programContext.programId) { _ in
+        .onChange(of: programContext.programId) { _, _ in
             Task {
                 await loadUserWorkoutTypes()
             }
@@ -2475,7 +2475,7 @@ private struct AdminWorkoutTypesTab: View {
                 await load()
             }
         }
-        .onChange(of: programContext.programId) { _ in
+        .onChange(of: programContext.programId) { _, _ in
             Task {
                 if !programContext.isGlobalAdmin {
                     selectedMember = nil
@@ -2488,13 +2488,13 @@ private struct AdminWorkoutTypesTab: View {
                 }
             }
         }
-        .onChange(of: selectedMember?.id) { _ in
+        .onChange(of: selectedMember?.id) { _, _ in
             Task { await load() }
         }
-        .onChange(of: programContext.members.count) { _ in
+        .onChange(of: programContext.members.count) { _, _ in
             applyDefaultSelectionIfNeeded()
         }
-        .onChange(of: programContext.loggedInUserId) { _ in
+        .onChange(of: programContext.loggedInUserId) { _, _ in
             if !programContext.isGlobalAdmin {
                 selectedMember = nil
                 hasUserChosenViewAs = false
@@ -4244,7 +4244,7 @@ struct MyProfileView: View {
             }
             gender = programContext.loggedInUserGender ?? ""
         }
-        .onChange(of: programContext.loggedInUserGender) { newValue in
+        .onChange(of: programContext.loggedInUserGender) { _, newValue in
             guard !didEditGender else { return }
             gender = newValue ?? ""
         }
@@ -5962,10 +5962,10 @@ private struct MemberMetricsModule: View {
         }
         .animation(.spring(response: 0.25, dampingFraction: 0.9), value: isExpanded)
         .task { await loadMetrics() }
-        .onChange(of: sortField) { _ in Task { await loadMetrics() } }
-        .onChange(of: sortDirection) { _ in Task { await loadMetrics() } }
-        .onChange(of: filters) { _ in Task { await loadMetrics() } }
-        .onChange(of: programContext.programId) { _ in Task { await loadMetrics() } }
+        .onChange(of: sortField) { _, _ in Task { await loadMetrics() } }
+        .onChange(of: sortDirection) { _, _ in Task { await loadMetrics() } }
+        .onChange(of: filters) { _, _ in Task { await loadMetrics() } }
+        .onChange(of: programContext.programId) { _, _ in Task { await loadMetrics() } }
     }
 
     private var headerRow: some View {
@@ -6189,10 +6189,10 @@ private struct MemberMetricsDetailView: View {
             ShareSheet(activityItems: [item.url])
         }
         .task { await loadMetrics() }
-        .onChange(of: sortField) { _ in Task { await loadMetrics() } }
-        .onChange(of: sortDirection) { _ in Task { await loadMetrics() } }
-        .onChange(of: filters) { _ in Task { await loadMetrics() } }
-        .onChange(of: programContext.programId) { _ in Task { await loadMetrics() } }
+        .onChange(of: sortField) { _, _ in Task { await loadMetrics() } }
+        .onChange(of: sortDirection) { _, _ in Task { await loadMetrics() } }
+        .onChange(of: filters) { _, _ in Task { await loadMetrics() } }
+        .onChange(of: programContext.programId) { _, _ in Task { await loadMetrics() } }
     }
 
     private var controls: some View {
@@ -7945,7 +7945,7 @@ private struct AnalyticsDetailView: View {
                 }
 
                 PeriodSelector(period: $period)
-                    .onChange(of: period) { newValue in
+                    .onChange(of: period) { _, newValue in
                         onChangePeriod?(newValue)
                     }
 
@@ -8537,7 +8537,7 @@ private struct AddDailyHealthDetailView: View {
                         .frame(maxWidth: .infinity)
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
-                        .onChange(of: sleepHoursText) { newValue in
+                        .onChange(of: sleepHoursText) { _, newValue in
                             let sanitized = sanitizeDigits(newValue)
                             if sanitized != newValue {
                                 sleepHoursText = sanitized
@@ -8549,7 +8549,7 @@ private struct AddDailyHealthDetailView: View {
                         .frame(maxWidth: .infinity)
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
-                        .onChange(of: sleepMinutesText) { newValue in
+                        .onChange(of: sleepMinutesText) { _, newValue in
                             let sanitized = sanitizeDigits(newValue)
                             if sanitized != newValue {
                                 sleepMinutesText = sanitized

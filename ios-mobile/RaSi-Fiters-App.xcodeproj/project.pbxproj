@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		31E51B7BAB2A4482A3DF408C /* AddWorkoutWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A7B63B4C7144C40BE5BE624 /* AddWorkoutWidget.swift */; };
-		E5BBB09EDCC846A89DD03571 /* AddWorkoutWidget.appex in CopyFiles */ = {isa = PBXBuildFile; fileRef = FE7B5D9E57C14C9AA2332D2E /* AddWorkoutWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E5BBB09EDCC846A89DD03571 /* Widgets.appex in CopyFiles */ = {isa = PBXBuildFile; fileRef = FE7B5D9E57C14C9AA2332D2E /* Widgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,7 +28,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				E5BBB09EDCC846A89DD03571 /* AddWorkoutWidget.appex in CopyFiles */,
+				E5BBB09EDCC846A89DD03571 /* Widgets.appex in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -38,7 +38,7 @@
 		2730FA1657084DDCBF167179 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2A7B63B4C7144C40BE5BE624 /* AddWorkoutWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddWorkoutWidget.swift; sourceTree = "<group>"; };
 		8A5EC6272EEA7CFA003215B8 /* RaSi-Fiters-App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RaSi-Fiters-App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		FE7B5D9E57C14C9AA2332D2E /* AddWorkoutWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AddWorkoutWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		FE7B5D9E57C14C9AA2332D2E /* Widgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = Widgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -93,7 +93,7 @@
 			isa = PBXGroup;
 			children = (
 				8A5EC6272EEA7CFA003215B8 /* RaSi-Fiters-App.app */,
-				FE7B5D9E57C14C9AA2332D2E /* AddWorkoutWidget.appex */,
+				FE7B5D9E57C14C9AA2332D2E /* Widgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -134,9 +134,9 @@
 			productReference = 8A5EC6272EEA7CFA003215B8 /* RaSi-Fiters-App.app */;
 			productType = "com.apple.product-type.application";
 		};
-		CCC0AC37A094471499296B05 /* AddWorkoutWidget */ = {
+		CCC0AC37A094471499296B05 /* Widgets */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 72D038300A5B4EE791A62058 /* Build configuration list for PBXNativeTarget "AddWorkoutWidget" */;
+			buildConfigurationList = 72D038300A5B4EE791A62058 /* Build configuration list for PBXNativeTarget "Widgets" */;
 			buildPhases = (
 				BE50B1B2D4944FCE90C36115 /* Sources */,
 				4FA061A59E2E47C8A5F03B76 /* Frameworks */,
@@ -146,11 +146,11 @@
 			);
 			dependencies = (
 			);
-			name = AddWorkoutWidget;
+			name = Widgets;
 			packageProductDependencies = (
 			);
 			productName = AddWorkoutWidget;
-			productReference = FE7B5D9E57C14C9AA2332D2E /* AddWorkoutWidget.appex */;
+			productReference = FE7B5D9E57C14C9AA2332D2E /* Widgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -161,7 +161,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2610;
-				LastUpgradeCheck = 2610;
+				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					8A5EC6262EEA7CFA003215B8 = {
 						CreatedOnToolsVersion = 26.1.1;
@@ -186,7 +186,7 @@
 			projectRoot = "";
 			targets = (
 				8A5EC6262EEA7CFA003215B8 /* RaSi-Fiters-App */,
-				CCC0AC37A094471499296B05 /* AddWorkoutWidget */,
+				CCC0AC37A094471499296B05 /* Widgets */,
 			);
 		};
 /* End PBXProject section */
@@ -229,7 +229,7 @@
 /* Begin PBXTargetDependency section */
 		432B3242B12844D296AAAC5D /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = CCC0AC37A094471499296B05 /* AddWorkoutWidget */;
+			target = CCC0AC37A094471499296B05 /* Widgets */;
 			targetProxy = F6FB457C3CF842878315909C /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -288,12 +288,13 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -346,11 +347,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -372,8 +374,8 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -408,8 +410,8 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -481,7 +483,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		72D038300A5B4EE791A62058 /* Build configuration list for PBXNativeTarget "AddWorkoutWidget" */ = {
+		72D038300A5B4EE791A62058 /* Build configuration list for PBXNativeTarget "Widgets" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9000E205F45744A69256CFB4 /* Debug */,

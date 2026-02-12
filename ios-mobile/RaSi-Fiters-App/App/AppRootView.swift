@@ -41,7 +41,7 @@ struct AppRootView: View {
                 }
             }
         }
-        .onChange(of: programContext.authToken) { _ in
+        .onChange(of: programContext.authToken) { _, _ in
             Task { @MainActor in
                 if programContext.authToken != nil {
                     programContext.startNotificationStreamIfNeeded()
@@ -50,12 +50,12 @@ struct AppRootView: View {
                 }
             }
         }
-        .onChange(of: programContext.isUpdateRequired) { isRequired in
+        .onChange(of: programContext.isUpdateRequired) { _, isRequired in
             if isRequired {
                 programContext.widgetRoute = nil
             }
         }
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             Task { @MainActor in
                 await programContext.checkMinimumSupportedVersion()

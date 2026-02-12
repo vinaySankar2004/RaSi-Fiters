@@ -124,7 +124,7 @@ struct ProgramPickerView: View {
             await loadPrograms()
             await programContext.loadPendingInvites()
         }
-        .onChange(of: programContext.returnToMyPrograms) { shouldReturn in
+        .onChange(of: programContext.returnToMyPrograms) { _, shouldReturn in
             guard shouldReturn else { return }
             programToOpen = nil
             programToEdit = nil

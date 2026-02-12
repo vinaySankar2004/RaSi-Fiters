@@ -56,7 +56,7 @@ struct QuickAddWorkoutWidgetEntryView: View {
         .task {
             await loadInitialData()
         }
-        .onChange(of: selectedProgramIds) { _ in
+        .onChange(of: selectedProgramIds) { _, _ in
             Task { await loadSelectedProgramData() }
         }
     }

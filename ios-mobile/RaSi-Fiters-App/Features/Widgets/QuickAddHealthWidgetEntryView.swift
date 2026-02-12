@@ -56,7 +56,7 @@ struct QuickAddHealthWidgetEntryView: View {
         .task {
             await loadInitialData()
         }
-        .onChange(of: selectedProgramIds) { _ in
+        .onChange(of: selectedProgramIds) { _, _ in
             Task { await loadSelectedProgramData() }
         }
     }
@@ -236,7 +236,7 @@ struct QuickAddHealthWidgetEntryView: View {
                     .frame(maxWidth: .infinity)
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
-                    .onChange(of: sleepHoursText) { newValue in
+                    .onChange(of: sleepHoursText) { _, newValue in
                         let sanitized = sanitizeDigits(newValue)
                         if sanitized != newValue {
                             sleepHoursText = sanitized
@@ -248,7 +248,7 @@ struct QuickAddHealthWidgetEntryView: View {
                     .frame(maxWidth: .infinity)
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
-                    .onChange(of: sleepMinutesText) { newValue in
+                    .onChange(of: sleepMinutesText) { _, newValue in
                         let sanitized = sanitizeDigits(newValue)
                         if sanitized != newValue {
                             sleepMinutesText = sanitized
