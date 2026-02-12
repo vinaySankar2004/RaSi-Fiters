@@ -30,10 +30,6 @@ struct AppRootView: View {
                     }
                 }
             }
-
-            if programContext.isUpdateRequired {
-                ForcedUpdateModalView(minimumVersion: programContext.minimumSupportedVersion)
-            }
         }
         .environmentObject(programContext)
         .task {
@@ -54,6 +50,11 @@ struct AppRootView: View {
                 }
             }
         }
+        .onChange(of: programContext.isUpdateRequired) { isRequired in
+            if isRequired {
+                programContext.widgetRoute = nil
+            }
+        }
         .onChange(of: scenePhase) { phase in
             guard phase == .active else { return }
             Task { @MainActor in
@@ -67,8 +68,12 @@ struct AppRootView: View {
             if let route = WidgetRoute(url: url) {
                 Task { @MainActor in
                     await programContext.checkMinimumSupportedVersion()
+                    if programContext.isUpdateRequired {
+                        programContext.widgetRoute = nil
+                    } else {
+                        programContext.widgetRoute = route
+                    }
                 }
-                programContext.widgetRoute = route
             }
         }
         .fullScreenCover(
@@ -85,6 +90,15 @@ struct AppRootView: View {
                 QuickAddHealthWidgetEntryView()
                     .environmentObject(programContext)
             }
+        }
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { programContext.isUpdateRequired },
+                set: { programContext.isUpdateRequired = $0 }
+            )
+        ) {
+            ForcedUpdateModalView(minimumVersion: programContext.minimumSupportedVersion)
+                .interactiveDismissDisabled(true)
         }
     }
 }
