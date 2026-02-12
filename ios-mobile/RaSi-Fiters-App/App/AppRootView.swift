@@ -57,6 +57,7 @@ struct AppRootView: View {
         .onChange(of: scenePhase) { phase in
             guard phase == .active else { return }
             Task { @MainActor in
+                await programContext.checkMinimumSupportedVersion()
                 if programContext.authToken != nil {
                     programContext.startNotificationStreamIfNeeded()
                 }
@@ -64,6 +65,9 @@ struct AppRootView: View {
         }
         .onOpenURL { url in
             if let route = WidgetRoute(url: url) {
+                Task { @MainActor in
+                    await programContext.checkMinimumSupportedVersion()
+                }
                 programContext.widgetRoute = route
             }
         }

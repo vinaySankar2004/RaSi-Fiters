@@ -95,7 +95,7 @@ struct AddWorkoutWidgetView: View {
                     .font(.subheadline.weight(.bold))
             }
 
-            Text("Add workout")
+            Text("Add workout session")
                 .font(.title3.weight(.bold))
                 .foregroundColor(.black)
 
@@ -204,7 +204,7 @@ struct AddDailyHealthWidgetView: View {
                     .foregroundColor(Color.white.opacity(0.7))
             }
 
-            Text("Log daily health")
+            Text("Log health")
                 .font(.headline.weight(.bold))
                 .foregroundColor(.white)
                 .lineLimit(1)
