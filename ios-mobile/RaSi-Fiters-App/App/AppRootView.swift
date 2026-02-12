@@ -30,9 +30,14 @@ struct AppRootView: View {
                     }
                 }
             }
+
+            if programContext.isUpdateRequired {
+                ForcedUpdateModalView(minimumVersion: programContext.minimumSupportedVersion)
+            }
         }
         .environmentObject(programContext)
         .task {
+            await programContext.checkMinimumSupportedVersion()
             await programContext.refreshSessionIfNeeded()
             if programContext.authToken != nil {
                 await MainActor.run {
@@ -55,6 +60,26 @@ struct AppRootView: View {
                 if programContext.authToken != nil {
                     programContext.startNotificationStreamIfNeeded()
                 }
+            }
+        }
+        .onOpenURL { url in
+            if let route = WidgetRoute(url: url) {
+                programContext.widgetRoute = route
+            }
+        }
+        .fullScreenCover(
+            item: Binding(
+                get: { programContext.authToken != nil ? programContext.widgetRoute : nil },
+                set: { programContext.widgetRoute = $0 }
+            )
+        ) { route in
+            switch route {
+            case .quickAddWorkout:
+                QuickAddWorkoutWidgetEntryView()
+                    .environmentObject(programContext)
+            case .quickAddHealth:
+                QuickAddHealthWidgetEntryView()
+                    .environmentObject(programContext)
             }
         }
     }

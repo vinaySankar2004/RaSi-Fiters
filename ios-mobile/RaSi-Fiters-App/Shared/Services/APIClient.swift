@@ -26,6 +26,19 @@ final class APIClient {
         return json?["message"] as? String ?? "OK"
     }
 
+    struct AppConfigResponse: Decodable {
+        let min_ios_version: String?
+    }
+
+    func fetchAppConfig() async throws -> AppConfigResponse {
+        var request = URLRequest(url: baseURL.appendingPathComponent("app-config"))
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let data = try await data(for: request, allowRefresh: false)
+        return try JSONDecoder().decode(AppConfigResponse.self, from: data)
+    }
+
     // Legacy login (kept if needed elsewhere)
     func login(username: String, password: String) async throws -> AuthResponse {
         var request = URLRequest(url: baseURL.appendingPathComponent("auth/login"))

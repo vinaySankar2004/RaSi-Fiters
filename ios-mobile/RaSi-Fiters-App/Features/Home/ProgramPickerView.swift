@@ -124,6 +124,17 @@ struct ProgramPickerView: View {
             await loadPrograms()
             await programContext.loadPendingInvites()
         }
+        .onChange(of: programContext.returnToMyPrograms) { shouldReturn in
+            guard shouldReturn else { return }
+            programToOpen = nil
+            programToEdit = nil
+            accountDestination = nil
+            showProgramActions = false
+            showAccountMenu = false
+            showDeleteConfirmation = false
+            programToDelete = nil
+            programContext.returnToMyPrograms = false
+        }
         .sheet(isPresented: $showProgramActions) {
             ProgramActionsSheet(onDismiss: {
                 // Refresh programs when sheet dismisses (in case user accepted an invite)

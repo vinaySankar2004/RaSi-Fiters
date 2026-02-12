@@ -1,6 +1,25 @@
 import Foundation
 import Combine
 
+enum WidgetRoute: String, Identifiable {
+    case quickAddWorkout
+    case quickAddHealth
+
+    var id: String { rawValue }
+
+    init?(url: URL) {
+        guard url.scheme == "rasifiters" else { return nil }
+        switch url.host {
+        case "quick-add-workout":
+            self = .quickAddWorkout
+        case "quick-add-health":
+            self = .quickAddHealth
+        default:
+            return nil
+        }
+    }
+}
+
 /// Shared program context so all tabs and queries know the active program.
 final class ProgramContext: ObservableObject {
     @Published var authToken: String?
@@ -68,6 +87,8 @@ final class ProgramContext: ObservableObject {
     @Published var memberHealthLogs: [APIClient.MemberHealthLogResponse.Item] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    @Published var isUpdateRequired: Bool = false
+    @Published var minimumSupportedVersion: String?
     
     // Logged-in user info
     @Published var loggedInUserId: String?
@@ -84,6 +105,8 @@ final class ProgramContext: ObservableObject {
 
     // Notifications (queued modals)
     @Published var notificationQueue: [APIClient.NotificationDTO] = []
+    @Published var widgetRoute: WidgetRoute?
+    @Published var returnToMyPrograms: Bool = false
 
     private var notificationStreamClient: NotificationStreamClient?
     private var notificationIds: Set<String> = []
@@ -137,7 +160,9 @@ final class ProgramContext: ObservableObject {
         memberHistoryLabel: String = "",
         memberHistoryDailyAverage: Double = 0,
         memberHistoryStartDate: Date = Date(),
-        memberHistoryEndDate: Date = Date()
+        memberHistoryEndDate: Date = Date(),
+        isUpdateRequired: Bool = false,
+        minimumSupportedVersion: String? = nil
     ) {
         self.authToken = authToken
         self.name = name
@@ -187,6 +212,8 @@ final class ProgramContext: ObservableObject {
         self.memberHistoryDailyAverage = memberHistoryDailyAverage
         self.memberHistoryStartDate = memberHistoryStartDate
         self.memberHistoryEndDate = memberHistoryEndDate
+        self.isUpdateRequired = isUpdateRequired
+        self.minimumSupportedVersion = minimumSupportedVersion
 
         restorePersistedSession()
         configureAPIClientHandlers()
@@ -1237,6 +1264,53 @@ final class ProgramContext: ObservableObject {
             defaults.set(value, forKey: key)
         } else {
             defaults.removeObject(forKey: key)
+        }
+    }
+
+    // MARK: - App Version
+
+    @MainActor
+    func checkMinimumSupportedVersion() async {
+        do {
+            let config = try await APIClient.shared.fetchAppConfig()
+            guard let minVersion = config.min_ios_version?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !minVersion.isEmpty else {
+                minimumSupportedVersion = nil
+                isUpdateRequired = false
+                return
+            }
+
+            minimumSupportedVersion = minVersion
+            let currentVersion = currentAppVersion()
+            isUpdateRequired = isVersion(currentVersion, lessThan: minVersion)
+        } catch {
+            // Fail open on network errors
+        }
+    }
+
+    private func currentAppVersion() -> String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+    }
+
+    private func isVersion(_ current: String, lessThan minimum: String) -> Bool {
+        let currentParts = versionComponents(from: current)
+        let minimumParts = versionComponents(from: minimum)
+        let maxCount = max(currentParts.count, minimumParts.count)
+
+        for index in 0..<maxCount {
+            let left = index < currentParts.count ? currentParts[index] : 0
+            let right = index < minimumParts.count ? minimumParts[index] : 0
+            if left < right { return true }
+            if left > right { return false }
+        }
+
+        return false
+    }
+
+    private func versionComponents(from version: String) -> [Int] {
+        version.split(separator: ".").map { part in
+            let digits = part.prefix { $0.isNumber }
+            return Int(digits) ?? 0
         }
     }
 

@@ -32,6 +32,13 @@ app.get("/", (req, res) => {
 
 app.use(express.json());
 
+// Minimal app config for client version checks
+app.get("/api/app-config", (req, res) => {
+    res.json({
+        min_ios_version: process.env.MIN_IOS_VERSION || null
+    });
+});
+
 // Register Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/members", memberRoutes);

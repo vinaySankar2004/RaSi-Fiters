@@ -10,6 +10,8 @@ enum APIConfig {
     // Hosted Render URL.
     static let renderBaseURL = URL(string: "https://rasi-fiters-api.onrender.com/api")!
 
+    static let appStoreURL = URL(string: "https://apps.apple.com/ca/app/rasi-fiters/id6758078961")!
+
     // Active base URL; debug uses local endpoints, release uses Render.
     static var activeBaseURL: URL {
         #if DEBUG

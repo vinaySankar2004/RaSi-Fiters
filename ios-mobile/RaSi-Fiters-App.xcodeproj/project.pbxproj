@@ -6,8 +6,39 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		31E51B7BAB2A4482A3DF408C /* AddWorkoutWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A7B63B4C7144C40BE5BE624 /* AddWorkoutWidget.swift */; };
+		E5BBB09EDCC846A89DD03571 /* AddWorkoutWidget.appex in CopyFiles */ = {isa = PBXBuildFile; fileRef = FE7B5D9E57C14C9AA2332D2E /* AddWorkoutWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F6FB457C3CF842878315909C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8A5EC61F2EEA7CFA003215B8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CCC0AC37A094471499296B05;
+			remoteInfo = AddWorkoutWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E0985425DAAC46ED8B22511C /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E5BBB09EDCC846A89DD03571 /* AddWorkoutWidget.appex in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		2730FA1657084DDCBF167179 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2A7B63B4C7144C40BE5BE624 /* AddWorkoutWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddWorkoutWidget.swift; sourceTree = "<group>"; };
 		8A5EC6272EEA7CFA003215B8 /* RaSi-Fiters-App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RaSi-Fiters-App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		FE7B5D9E57C14C9AA2332D2E /* AddWorkoutWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AddWorkoutWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -32,6 +63,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		4FA061A59E2E47C8A5F03B76 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8A5EC6242EEA7CFA003215B8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -46,6 +84,7 @@
 			isa = PBXGroup;
 			children = (
 				8A5EC6292EEA7CFA003215B8 /* RaSi-Fiters-App */,
+				BC3A6F4C6C4242EB8BD8921E /* RaSi-Fiters-App-Widgets */,
 				8A5EC6282EEA7CFA003215B8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,8 +93,18 @@
 			isa = PBXGroup;
 			children = (
 				8A5EC6272EEA7CFA003215B8 /* RaSi-Fiters-App.app */,
+				FE7B5D9E57C14C9AA2332D2E /* AddWorkoutWidget.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		BC3A6F4C6C4242EB8BD8921E /* RaSi-Fiters-App-Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				2A7B63B4C7144C40BE5BE624 /* AddWorkoutWidget.swift */,
+				2730FA1657084DDCBF167179 /* Info.plist */,
+			);
+			path = "RaSi-Fiters-App-Widgets";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -68,10 +117,12 @@
 				8A5EC6232EEA7CFA003215B8 /* Sources */,
 				8A5EC6242EEA7CFA003215B8 /* Frameworks */,
 				8A5EC6252EEA7CFA003215B8 /* Resources */,
+				E0985425DAAC46ED8B22511C /* CopyFiles */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				432B3242B12844D296AAAC5D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				8A5EC6292EEA7CFA003215B8 /* RaSi-Fiters-App */,
@@ -82,6 +133,25 @@
 			productName = "RaSi-Fiters-App";
 			productReference = 8A5EC6272EEA7CFA003215B8 /* RaSi-Fiters-App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CCC0AC37A094471499296B05 /* AddWorkoutWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 72D038300A5B4EE791A62058 /* Build configuration list for PBXNativeTarget "AddWorkoutWidget" */;
+			buildPhases = (
+				BE50B1B2D4944FCE90C36115 /* Sources */,
+				4FA061A59E2E47C8A5F03B76 /* Frameworks */,
+				0B9D612E52BA4883A7DECB7B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AddWorkoutWidget;
+			packageProductDependencies = (
+			);
+			productName = AddWorkoutWidget;
+			productReference = FE7B5D9E57C14C9AA2332D2E /* AddWorkoutWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -94,6 +164,9 @@
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
 					8A5EC6262EEA7CFA003215B8 = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					CCC0AC37A094471499296B05 = {
 						CreatedOnToolsVersion = 26.1.1;
 					};
 				};
@@ -113,11 +186,19 @@
 			projectRoot = "";
 			targets = (
 				8A5EC6262EEA7CFA003215B8 /* RaSi-Fiters-App */,
+				CCC0AC37A094471499296B05 /* AddWorkoutWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0B9D612E52BA4883A7DECB7B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8A5EC6252EEA7CFA003215B8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -135,7 +216,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BE50B1B2D4944FCE90C36115 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				31E51B7BAB2A4482A3DF408C /* AddWorkoutWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		432B3242B12844D296AAAC5D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CCC0AC37A094471499296B05 /* AddWorkoutWidget */;
+			targetProxy = F6FB457C3CF842878315909C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		8A5EC6302EEA7CFB003215B8 /* Debug */ = {
@@ -331,9 +428,66 @@
 			};
 			name = Release;
 		};
+		9000E205F45744A69256CFB4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 15;
+				DEVELOPMENT_TEAM = VSTTF2AM22;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "RaSi-Fiters-App-Widgets/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.app.rasifiters.AddWorkoutWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D30A1B0655AF4050B87BCC36 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 15;
+				DEVELOPMENT_TEAM = VSTTF2AM22;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "RaSi-Fiters-App-Widgets/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.app.rasifiters.AddWorkoutWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		72D038300A5B4EE791A62058 /* Build configuration list for PBXNativeTarget "AddWorkoutWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9000E205F45744A69256CFB4 /* Debug */,
+				D30A1B0655AF4050B87BCC36 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		8A5EC6222EEA7CFA003215B8 /* Build configuration list for PBXProject "RaSi-Fiters-App" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
