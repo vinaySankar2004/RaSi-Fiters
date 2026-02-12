@@ -59,6 +59,9 @@ struct AppRootView: View {
             guard phase == .active else { return }
             Task { @MainActor in
                 await programContext.checkMinimumSupportedVersion()
+                if programContext.isOffline {
+                    await programContext.refreshSessionIfNeeded()
+                }
                 if programContext.authToken != nil {
                     programContext.startNotificationStreamIfNeeded()
                 }
@@ -99,6 +102,21 @@ struct AppRootView: View {
         ) {
             ForcedUpdateModalView(minimumVersion: programContext.minimumSupportedVersion)
                 .interactiveDismissDisabled(true)
+        }
+        .alert(
+            "You're offline",
+            isPresented: Binding(
+                get: { programContext.offlineNotice != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        programContext.offlineNotice = nil
+                    }
+                }
+            )
+        ) {
+            Button("OK") { programContext.offlineNotice = nil }
+        } message: {
+            Text(programContext.offlineNotice ?? "You're offline. We'll reconnect when internet is back.")
         }
     }
 }

@@ -5,6 +5,12 @@ struct APIError: LocalizedError {
     var errorDescription: String? { message }
 }
 
+struct APIHTTPError: LocalizedError {
+    let statusCode: Int
+    let message: String
+    var errorDescription: String? { message }
+}
+
 final class APIClient {
     static let shared = APIClient()
 
@@ -126,7 +132,7 @@ final class APIClient {
         let (data, response) = try await rawData(for: request)
         guard 200..<300 ~= response.statusCode else {
             let message = extractErrorMessage(from: data) ?? "Request failed (\(response.statusCode))"
-            throw APIError(message: message)
+            throw APIHTTPError(statusCode: response.statusCode, message: message)
         }
         return try JSONDecoder().decode(TokenRefreshResponse.self, from: data)
     }
@@ -1495,7 +1501,9 @@ final class APIClient {
                     return retryData
                 }
             } catch {
-                authFailureHandler?()
+                if isAuthFailure(error) {
+                    authFailureHandler?()
+                }
             }
         }
 
@@ -1540,5 +1548,12 @@ final class APIClient {
             return (json["error"] as? String) ?? (json["message"] as? String)
         }
         return nil
+    }
+
+    private func isAuthFailure(_ error: Error) -> Bool {
+        if let httpError = error as? APIHTTPError {
+            return httpError.statusCode == 401 || httpError.statusCode == 403
+        }
+        return false
     }
 }

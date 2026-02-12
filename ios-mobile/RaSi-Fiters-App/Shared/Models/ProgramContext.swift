@@ -89,6 +89,8 @@ final class ProgramContext: ObservableObject {
     @Published var errorMessage: String?
     @Published var isUpdateRequired: Bool = false
     @Published var minimumSupportedVersion: String?
+    @Published var isOffline: Bool = false
+    @Published var offlineNotice: String?
     
     // Logged-in user info
     @Published var loggedInUserId: String?
@@ -1322,12 +1324,25 @@ final class ProgramContext: ObservableObject {
             authToken = response.token
             self.refreshToken = response.refreshToken ?? refreshToken
             persistSession()
+            isOffline = false
+            offlineNotice = nil
             await loadLookupData()
             if programId != nil {
                 await loadMembershipDetails()
             }
         } catch {
-            signOut()
+            if isNetworkError(error) {
+                isOffline = true
+                if offlineNotice == nil {
+                    offlineNotice = "You're offline. We'll reconnect when internet is back."
+                }
+                return
+            }
+            if isAuthFailure(error) {
+                signOut()
+                return
+            }
+            errorMessage = error.localizedDescription
         }
     }
 
@@ -1503,6 +1518,8 @@ final class ProgramContext: ObservableObject {
         programId = nil
         membershipDetails = []
         pendingInvites = []
+        isOffline = false
+        offlineNotice = nil
 
         stopNotificationStream()
         clearPersistedSession()
@@ -1512,5 +1529,18 @@ final class ProgramContext: ObservableObject {
                 try? await APIClient.shared.logout(refreshToken: tokenToRevoke)
             }
         }
+    }
+
+    private func isNetworkError(_ error: Error) -> Bool {
+        if error is URLError { return true }
+        let nsError = error as NSError
+        return nsError.domain == NSURLErrorDomain
+    }
+
+    private func isAuthFailure(_ error: Error) -> Bool {
+        if let httpError = error as? APIHTTPError {
+            return httpError.statusCode == 401 || httpError.statusCode == 403
+        }
+        return false
     }
 }
