@@ -17,7 +17,7 @@ const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Prefer not to say"] as 
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { session, program, token } = useAuthGuard();
+  const { session, program, token } = useAuthGuard({ requireProgram: false });
   const { setSession, signOut } = useAuth();
   const queryClient = useQueryClient();
 
@@ -109,7 +109,7 @@ export default function ProfilePage() {
   return (
     <>
       <PageShell maxWidth="3xl">
-        <PageHeader title="My Profile" backHref="/program" />
+        <PageHeader title="My Profile" backHref={program?.id ? "/program" : "/programs"} />
 
         <GlassCard padding="lg" className="space-y-6">
           <div className="flex items-center gap-4">
