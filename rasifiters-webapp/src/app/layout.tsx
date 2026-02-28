@@ -15,11 +15,11 @@ export const metadata: Metadata = {
   description: "RaSi Fiters web app",
   icons: {
     icon: [
-      { url: "/brand/app-icon.png", media: "(prefers-color-scheme: light)" },
+      { url: "/brand/app-icon.png" },
       { url: "/brand/app-icon-dark.png", media: "(prefers-color-scheme: dark)" }
     ],
     apple: [
-      { url: "/brand/app-icon.png", media: "(prefers-color-scheme: light)" },
+      { url: "/brand/app-icon.png" },
       { url: "/brand/app-icon-dark.png", media: "(prefers-color-scheme: dark)" }
     ]
   }

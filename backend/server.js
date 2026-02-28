@@ -20,7 +20,12 @@ const notificationRoutes = require("./routes/notifications");
 const app = express();
 
 app.use(cors({
-    origin: ["http://localhost:3000", "https://rasifiters.netlify.app"],
+    origin: [
+        "http://localhost:3000",
+        "https://rasi-fiters.vercel.app",
+        "https://rasifiters.com",
+        "https://www.rasifiters.com"
+    ],
     credentials: true
 }));
 
