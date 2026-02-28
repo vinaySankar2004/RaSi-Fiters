@@ -57,8 +57,10 @@ export default function MemberWorkoutsPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [workoutType, setWorkoutType] = useState("");
-  const [minDuration, setMinDuration] = useState("");
-  const [maxDuration, setMaxDuration] = useState("");
+  const [minDurationHours, setMinDurationHours] = useState("");
+  const [minDurationMinutes, setMinDurationMinutes] = useState("");
+  const [maxDurationHours, setMaxDurationHours] = useState("");
+  const [maxDurationMinutes, setMaxDurationMinutes] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [editTarget, setEditTarget] = useState<MemberRecentItem | null>(null);
   const [editHours, setEditHours] = useState("");
@@ -85,13 +87,19 @@ export default function MemberWorkoutsPage() {
   }, [programWorkoutsQuery.data]);
 
   const minDurationNum = useMemo(() => {
-    const n = Number(minDuration);
-    return minDuration.trim() !== "" && !Number.isNaN(n) && n >= 0 ? n : undefined;
-  }, [minDuration]);
+    const total =
+      (Number(minDurationHours) || 0) * 60 + (Number(minDurationMinutes) || 0);
+    const hasInput =
+      minDurationHours.trim() !== "" || minDurationMinutes.trim() !== "";
+    return hasInput && total > 0 ? total : undefined;
+  }, [minDurationHours, minDurationMinutes]);
   const maxDurationNum = useMemo(() => {
-    const n = Number(maxDuration);
-    return maxDuration.trim() !== "" && !Number.isNaN(n) && n >= 0 ? n : undefined;
-  }, [maxDuration]);
+    const total =
+      (Number(maxDurationHours) || 0) * 60 + (Number(maxDurationMinutes) || 0);
+    const hasInput =
+      maxDurationHours.trim() !== "" || maxDurationMinutes.trim() !== "";
+    return hasInput && total > 0 ? total : undefined;
+  }, [maxDurationHours, maxDurationMinutes]);
 
   const workoutsQuery = useQuery({
     queryKey: [
@@ -165,13 +173,20 @@ export default function MemberWorkoutsPage() {
     downloadCsv(filename, csv);
   };
 
-  const hasActiveFilters = startDate || endDate || workoutType || minDuration.trim() || maxDuration.trim();
+  const hasActiveFilters =
+    startDate ||
+    endDate ||
+    workoutType ||
+    minDurationHours.trim() ||
+    minDurationMinutes.trim() ||
+    maxDurationHours.trim() ||
+    maxDurationMinutes.trim();
   const formattedFilters = useMemo(() => {
     const parts: string[] = [];
     if (startDate || endDate) parts.push(`${startDate || "Start"} – ${endDate || "End"}`);
     if (workoutType) parts.push(workoutType);
-    if (minDurationNum !== undefined) parts.push(`≥ ${minDurationNum} min`);
-    if (maxDurationNum !== undefined) parts.push(`≤ ${maxDurationNum} min`);
+    if (minDurationNum !== undefined) parts.push(`At least ${formatDuration(minDurationNum)}`);
+    if (maxDurationNum !== undefined) parts.push(`At most ${formatDuration(maxDurationNum)}`);
     return parts.length === 0 ? null : parts.join(" · ");
   }, [startDate, endDate, workoutType, minDurationNum, maxDurationNum]);
 
@@ -319,26 +334,52 @@ export default function MemberWorkoutsPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-semibold text-rf-text">Min duration (≥ minutes)</label>
-              <input
-                type="number"
-                min={0}
-                value={minDuration}
-                onChange={(event) => setMinDuration(event.target.value)}
-                placeholder="Any"
-                className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-              />
+              <label className="text-sm font-semibold text-rf-text">Min duration</label>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={minDurationHours}
+                  onChange={(event) => setMinDurationHours(event.target.value)}
+                  className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                  placeholder="0"
+                />
+                <span className="text-sm text-rf-text-muted">hr</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={minDurationMinutes}
+                  onChange={(event) => setMinDurationMinutes(event.target.value)}
+                  className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                  placeholder="0"
+                />
+                <span className="text-sm text-rf-text-muted">min</span>
+              </div>
             </div>
             <div>
-              <label className="text-sm font-semibold text-rf-text">Max duration (≤ minutes)</label>
-              <input
-                type="number"
-                min={0}
-                value={maxDuration}
-                onChange={(event) => setMaxDuration(event.target.value)}
-                placeholder="Any"
-                className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-              />
+              <label className="text-sm font-semibold text-rf-text">Max duration</label>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  value={maxDurationHours}
+                  onChange={(event) => setMaxDurationHours(event.target.value)}
+                  className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                  placeholder="0"
+                />
+                <span className="text-sm text-rf-text-muted">hr</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={maxDurationMinutes}
+                  onChange={(event) => setMaxDurationMinutes(event.target.value)}
+                  className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                  placeholder="0"
+                />
+                <span className="text-sm text-rf-text-muted">min</span>
+              </div>
             </div>
             <button
               type="button"
@@ -346,8 +387,10 @@ export default function MemberWorkoutsPage() {
                 setStartDate("");
                 setEndDate("");
                 setWorkoutType("");
-                setMinDuration("");
-                setMaxDuration("");
+                setMinDurationHours("");
+                setMinDurationMinutes("");
+                setMaxDurationHours("");
+                setMaxDurationMinutes("");
               }}
               className="rounded-full bg-rf-surface-muted px-3 py-1 text-xs font-semibold text-rf-text-muted"
             >

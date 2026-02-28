@@ -238,14 +238,14 @@ struct MemberRecentDetail: View {
                         Text("·")
                             .font(.caption)
                             .foregroundColor(Color(.secondaryLabel))
-                        Text("≥\(minD)m")
+                        Text("At least \(formatDuration(minD))")
                             .font(.caption.weight(.medium))
                     }
                     if let maxD = filters.maxDurationMinutes {
                         Text("·")
                             .font(.caption)
                             .foregroundColor(Color(.secondaryLabel))
-                        Text("≤\(maxD)m")
+                        Text("At most \(formatDuration(maxD))")
                             .font(.caption.weight(.medium))
                     }
                     Spacer()
@@ -491,8 +491,10 @@ struct WorkoutFilterSheet: View {
     @State private var useStartDate: Bool = false
     @State private var useEndDate: Bool = false
     @State private var localWorkoutTypeName: String? = nil
-    @State private var localMinDurationText: String = ""
-    @State private var localMaxDurationText: String = ""
+    @State private var localMinDurationHours: String = ""
+    @State private var localMinDurationMinutes: String = ""
+    @State private var localMaxDurationHours: String = ""
+    @State private var localMaxDurationMinutes: String = ""
     @State private var showWorkoutTypePicker: Bool = false
     
     private var workoutTypeOptions: [SearchablePickerSheet.PickerOption] {
@@ -533,18 +535,42 @@ struct WorkoutFilterSheet: View {
                     }
                 }
                 
-                Section("Duration (minutes)") {
+                Section("Duration") {
                     HStack {
-                        Text("Min (≥)")
-                            .frame(width: 70, alignment: .leading)
-                        TextField("Any", text: $localMinDurationText)
+                        Text("Min duration")
+                            .frame(width: 100, alignment: .leading)
+                        TextField("0", text: $localMinDurationHours)
                             .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 50)
+                        Text("hr")
+                            .font(.subheadline)
+                            .foregroundColor(Color(.secondaryLabel))
+                        TextField("0", text: $localMinDurationMinutes)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 50)
+                        Text("min")
+                            .font(.subheadline)
+                            .foregroundColor(Color(.secondaryLabel))
                     }
                     HStack {
-                        Text("Max (≤)")
-                            .frame(width: 70, alignment: .leading)
-                        TextField("Any", text: $localMaxDurationText)
+                        Text("Max duration")
+                            .frame(width: 100, alignment: .leading)
+                        TextField("0", text: $localMaxDurationHours)
                             .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 50)
+                        Text("hr")
+                            .font(.subheadline)
+                            .foregroundColor(Color(.secondaryLabel))
+                        TextField("0", text: $localMaxDurationMinutes)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 50)
+                        Text("min")
+                            .font(.subheadline)
+                            .foregroundColor(Color(.secondaryLabel))
                     }
                 }
                 
@@ -555,8 +581,10 @@ struct WorkoutFilterSheet: View {
                             useStartDate = false
                             useEndDate = false
                             localWorkoutTypeName = nil
-                            localMinDurationText = ""
-                            localMaxDurationText = ""
+                            localMinDurationHours = ""
+                            localMinDurationMinutes = ""
+                            localMaxDurationHours = ""
+                            localMaxDurationMinutes = ""
                         }
                     }
                 }
@@ -587,8 +615,14 @@ struct WorkoutFilterSheet: View {
                     useEndDate = true
                 }
                 localWorkoutTypeName = filters.workoutTypeName
-                if let minD = filters.minDurationMinutes { localMinDurationText = "\(minD)" }
-                if let maxD = filters.maxDurationMinutes { localMaxDurationText = "\(maxD)" }
+                if let minD = filters.minDurationMinutes {
+                    localMinDurationHours = "\(minD / 60)"
+                    localMinDurationMinutes = "\(minD % 60)"
+                }
+                if let maxD = filters.maxDurationMinutes {
+                    localMaxDurationHours = "\(maxD / 60)"
+                    localMaxDurationMinutes = "\(maxD % 60)"
+                }
             }
             .sheet(isPresented: $showWorkoutTypePicker) {
                 SearchablePickerSheet(
@@ -613,9 +647,9 @@ struct WorkoutFilterSheet: View {
         filters.startDate = useStartDate ? localStartDate : nil
         filters.endDate = useEndDate ? localEndDate : nil
         filters.workoutTypeName = localWorkoutTypeName
-        let minVal = Int(localMinDurationText.trimmingCharacters(in: .whitespacesAndNewlines))
-        let maxVal = Int(localMaxDurationText.trimmingCharacters(in: .whitespacesAndNewlines))
-        filters.minDurationMinutes = (minVal != nil && minVal! >= 0) ? minVal : nil
-        filters.maxDurationMinutes = (maxVal != nil && maxVal! >= 0) ? maxVal : nil
+        let minTotal = (Int(localMinDurationHours) ?? 0) * 60 + (Int(localMinDurationMinutes) ?? 0)
+        let maxTotal = (Int(localMaxDurationHours) ?? 0) * 60 + (Int(localMaxDurationMinutes) ?? 0)
+        filters.minDurationMinutes = minTotal > 0 ? minTotal : nil
+        filters.maxDurationMinutes = maxTotal > 0 ? maxTotal : nil
     }
 }

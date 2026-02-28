@@ -139,6 +139,10 @@ dist
 .DS_Store
 .vscode/
 .cursor/
+
+# Xcode user-specific state (window layout, last open file, etc.)
+xcuserdata/
+*.xcuserstate
 backend/.DS_Store
 frontend/README.md
 frontend/src/styles
