@@ -1,23 +1,21 @@
 const express = require("express");
 const cors = require("cors");
+require("dotenv").config();
 const { connectDB } = require("./config/database");
 require("./models/index");
+const { errorHandler } = require("./middleware/errorHandler");
+
 const authRoutes = require("./routes/auth");
 const memberRoutes = require("./routes/members");
-const programMembershipRoutes = require("./routes/programMemberships");
-const memberMetricsRoutes = require("./routes/memberMetrics");
-const memberHistoryRoutes = require("./routes/memberHistory");
-const memberStreaksRoutes = require("./routes/memberStreaks");
-const memberRecentRoutes = require("./routes/memberRecent");
+const programRoutes = require("./routes/programs");
+const membershipRoutes = require("./routes/memberships");
+const inviteRoutes = require("./routes/invites");
 const workoutRoutes = require("./routes/workouts");
 const programWorkoutRoutes = require("./routes/programWorkouts");
-const workoutLogRoutes = require("./routes/workoutLogs");
-const analyticsRoutes = require("./routes/analytics");
-const analyticsV2Routes = require("./routes/analyticsV2");
-const dailyHealthLogRoutes = require("./routes/dailyHealthLogs");
-const programRoutes = require("./routes/programs");
+const { workoutLogRouter, dailyHealthLogRouter } = require("./routes/logs");
+const { v1Router: analyticsV1Routes, v2Router: analyticsV2Routes } = require("./routes/analytics");
+const { metricsRouter, historyRouter, streaksRouter, recentRouter } = require("./routes/memberAnalytics");
 const notificationRoutes = require("./routes/notifications");
-require("dotenv").config();
 
 const app = express();
 
@@ -32,38 +30,38 @@ app.get("/", (req, res) => {
 
 app.use(express.json());
 
-// Minimal app config for client version checks
 app.get("/api/app-config", (req, res) => {
     res.json({
         min_ios_version: process.env.MIN_IOS_VERSION || null
     });
 });
 
-// Register Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/members", memberRoutes);
-app.use("/api/program-memberships", programMembershipRoutes);
-app.use("/api/member-metrics", memberMetricsRoutes);
-app.use("/api/member-history", memberHistoryRoutes);
-app.use("/api/member-streaks", memberStreaksRoutes);
-app.use("/api/member-recent", memberRecentRoutes);
+app.use("/api/programs", programRoutes);
+app.use("/api/program-memberships", membershipRoutes);
+app.use("/api/program-memberships", inviteRoutes);
 app.use("/api/workouts", workoutRoutes);
 app.use("/api/program-workouts", programWorkoutRoutes);
-app.use("/api/workout-logs", workoutLogRoutes);
-app.use("/api/daily-health-logs", dailyHealthLogRoutes);
-app.use("/api/analytics", analyticsRoutes);
+app.use("/api/workout-logs", workoutLogRouter);
+app.use("/api/daily-health-logs", dailyHealthLogRouter);
+app.use("/api/analytics", analyticsV1Routes);
 app.use("/api/analytics-v2", analyticsV2Routes);
-app.use("/api/programs", programRoutes);
+app.use("/api/member-metrics", metricsRouter);
+app.use("/api/member-history", historyRouter);
+app.use("/api/member-streaks", streaksRouter);
+app.use("/api/member-recent", recentRouter);
 app.use("/api/notifications", notificationRoutes);
 
-// for testing purposes
 app.get("/api/test", (req, res) => {
     res.json({
         message: "API is working!",
-        version: "2.0.0", // Updated version to reflect the database restructuring
+        version: "3.0.0",
         dbSchema: "Consolidated"
     });
 });
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5001;
 
@@ -71,7 +69,6 @@ const startServer = async () => {
     try {
         await connectDB();
         console.log("Database connected successfully");
-
         app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     } catch (error) {
         console.error("Failed to start server:", error);

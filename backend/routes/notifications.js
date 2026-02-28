@@ -25,34 +25,28 @@ const authenticateStream = (req, res, next) => {
     }
 };
 
-// GET /notifications/unacknowledged : fetch queued notifications for the user
 router.get("/unacknowledged", authenticateToken, async (req, res) => {
     try {
         const memberId = req.user.id;
         const recipients = await NotificationRecipient.findAll({
-            where: {
-                member_id: memberId,
-                acknowledged_at: null
-            },
-            include: [
-                {
-                    model: Notification,
-                    attributes: ["id", "type", "program_id", "actor_member_id", "title", "body", "created_at"]
-                }
-            ],
+            where: { member_id: memberId, acknowledged_at: null },
+            include: [{
+                model: Notification,
+                attributes: ["id", "type", "program_id", "actor_member_id", "title", "body", "created_at"]
+            }],
             order: [[Notification, "created_at", "ASC"]]
         });
 
         const result = recipients
-            .filter((recipient) => recipient.Notification)
-            .map((recipient) => ({
-                id: recipient.Notification.id,
-                type: recipient.Notification.type,
-                program_id: recipient.Notification.program_id,
-                actor_member_id: recipient.Notification.actor_member_id,
-                title: recipient.Notification.title,
-                body: recipient.Notification.body,
-                created_at: recipient.Notification.created_at
+            .filter((r) => r.Notification)
+            .map((r) => ({
+                id: r.Notification.id,
+                type: r.Notification.type,
+                program_id: r.Notification.program_id,
+                actor_member_id: r.Notification.actor_member_id,
+                title: r.Notification.title,
+                body: r.Notification.body,
+                created_at: r.Notification.created_at
             }));
 
         res.json(result);
@@ -62,16 +56,12 @@ router.get("/unacknowledged", authenticateToken, async (req, res) => {
     }
 });
 
-// POST /notifications/:id/acknowledge : acknowledge a notification
 router.post("/:id/acknowledge", authenticateToken, async (req, res) => {
     try {
-        const memberId = req.user.id;
-        const notificationId = req.params.id;
-
         const recipient = await NotificationRecipient.findOne({
             where: {
-                notification_id: notificationId,
-                member_id: memberId,
+                notification_id: req.params.id,
+                member_id: req.user.id,
                 acknowledged_at: null
             }
         });
@@ -81,7 +71,6 @@ router.post("/:id/acknowledge", authenticateToken, async (req, res) => {
         }
 
         await recipient.update({ acknowledged_at: new Date() });
-
         res.json({ message: "Notification acknowledged." });
     } catch (error) {
         console.error("Error acknowledging notification:", error);
@@ -89,7 +78,6 @@ router.post("/:id/acknowledge", authenticateToken, async (req, res) => {
     }
 });
 
-// GET /notifications/stream : SSE stream for real-time notifications (in-app only)
 router.get("/stream", authenticateStream, (req, res) => {
     const memberId = req.user.id;
 
