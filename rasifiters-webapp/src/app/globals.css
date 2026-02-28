@@ -16,7 +16,14 @@
   --rf-accent-strong: #ff7a00;
   --rf-success: #2fb861;
   --rf-danger: #ef4444;
+  --rf-info: #2563eb;
+  --rf-warning: #f59e0b;
   --rf-shadow: rgba(18, 20, 28, 0.15);
+  --rf-chart-1: #ff8b1f;
+  --rf-chart-2: #60a5fa;
+  --rf-chart-3: #f59e0b;
+  --rf-chart-4: #22c55e;
+  --rf-chart-5: #8b5cf6;
 }
 
 [data-theme="dark"] {
@@ -33,7 +40,14 @@
   --rf-accent-strong: #ff8b1f;
   --rf-success: #36c56f;
   --rf-danger: #f87171;
+  --rf-info: #60a5fa;
+  --rf-warning: #fbbf24;
   --rf-shadow: rgba(0, 0, 0, 0.45);
+  --rf-chart-1: #ff9c3a;
+  --rf-chart-2: #60a5fa;
+  --rf-chart-3: #fbbf24;
+  --rf-chart-4: #34d399;
+  --rf-chart-5: #a78bfa;
 }
 
 * {
@@ -139,6 +153,16 @@ body.modal-open .bottom-nav {
   background: var(--rf-input-bg);
   border: 1px solid var(--rf-input-border);
   box-shadow: 0 12px 22px rgba(0, 0, 0, 0.35);
+}
+
+.error-banner {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--rf-danger);
+}
+
+[data-theme="dark"] .error-banner {
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
 }
 
 .info-banner {

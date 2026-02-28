@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { useAuth } from "@/lib/auth/auth-provider";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
 import { fetchProgramMembers, type Member } from "@/lib/api/programs";
 import {
   fetchMemberHealthLogs,
@@ -25,15 +25,22 @@ import {
   type MemberMetrics,
   type MemberRecentItem
 } from "@/lib/api/members";
-import { formatShortDate } from "@/lib/format";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { formatShortDate, initials, sleepLabel, dietLabel } from "@/lib/format";
+import { FlameIcon, IconMail as MailIcon } from "@/components/icons";
+import { PageShell } from "@/components/ui/PageShell";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Modal } from "@/components/ui/Modal";
+import {
+  CHART_COLORS,
+  CHART_TOOLTIP_CONTENT_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+  CHART_GRID_PROPS,
+  CHART_AXIS_TICK
+} from "@/lib/chart-theme";
 
 export default function MembersPage() {
   const router = useRouter();
-  const { session, isBootstrapping } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const programId = program?.id ?? "";
+  const { session, program, token, programId } = useAuthGuard();
 
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const isProgramAdmin = program?.my_role === "admin" || isGlobalAdmin;
@@ -48,18 +55,6 @@ export default function MembersPage() {
     if (!programId || !loggedInUserId) return "";
     return `rf:members:view-as:${programId}:${loggedInUserId}`;
   }, [programId, loggedInUserId]);
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
 
   const membersQuery = useQuery({
     queryKey: ["members", "list", programId],
@@ -175,131 +170,129 @@ export default function MembersPage() {
   }, [canViewAs, adminSelectedMember, isGlobalAdmin, session?.user.memberName]);
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-5xl space-y-6">
-        <header className="flex items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-rf-text">Members</h1>
-            <p className="mt-1 text-sm font-semibold text-rf-text-muted">{program?.name ?? "Program"}</p>
-          </div>
-          <div className="ml-auto flex items-center gap-3">
-            {!canViewAs && (
-              <button
-                type="button"
-                onClick={() => router.push("/members/list")}
-              className="pill-button rounded-full px-4 py-2 text-xs font-semibold transition"
-              >
-                View Members
-              </button>
-            )}
-            {canInvite && (
-              <button
-                type="button"
-                onClick={() => router.push("/members/invite")}
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-rf-accent text-lg font-semibold text-black shadow"
-                aria-label="Invite member"
-              >
-                <MailIcon className="h-6 w-6 text-black" />
-              </button>
-            )}
-          </div>
-        </header>
+    <PageShell>
+      <header className="flex items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-rf-text">Members</h1>
+          <p className="mt-1 text-sm font-semibold text-rf-text-muted">{program?.name ?? "Program"}</p>
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          {!canViewAs && (
+            <button
+              type="button"
+              onClick={() => router.push("/members/list")}
+            className="pill-button rounded-full px-4 py-2 text-xs font-semibold transition"
+            >
+              View Members
+            </button>
+          )}
+          {canInvite && (
+            <button
+              type="button"
+              onClick={() => router.push("/members/invite")}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-rf-accent text-lg font-semibold text-black shadow"
+              aria-label="Invite member"
+            >
+              <MailIcon className="h-6 w-6 text-black" />
+            </button>
+          )}
+        </div>
+      </header>
 
-        {canViewAs && (
-          <button
-            type="button"
-            onClick={() => router.push("/members/metrics")}
-            className="glass-card group w-full rounded-3xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-rf-text-muted">Member Performance Metrics</p>
-                <p className="text-xs font-semibold text-rf-text-muted">
-                  {metricsPreviewQuery.data ? `${metricsPreviewQuery.data.total} members` : "Loading..."}
-                </p>
+      {canViewAs && (
+        <button
+          type="button"
+          onClick={() => router.push("/members/metrics")}
+          className="glass-card group w-full rounded-3xl p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-rf-text-muted">Member Performance Metrics</p>
+              <p className="text-xs font-semibold text-rf-text-muted">
+                {metricsPreviewQuery.data ? `${metricsPreviewQuery.data.total} members` : "Loading..."}
+              </p>
+            </div>
+            <span className="text-sm font-semibold text-rf-text-muted">›</span>
+          </div>
+          <div className="mt-4">
+            {metricsPreviewQuery.isLoading && (
+              <div className="rounded-2xl bg-rf-surface-muted px-4 py-6 text-sm text-rf-text-muted">
+                Loading metrics...
               </div>
-              <span className="text-sm font-semibold text-rf-text-muted">›</span>
-            </div>
-            <div className="mt-4">
-              {metricsPreviewQuery.isLoading && (
-                <div className="rounded-2xl bg-rf-surface-muted px-4 py-6 text-sm text-rf-text-muted">
-                  Loading metrics...
-                </div>
-              )}
-              {metricsPreviewQuery.data && metricsPreviewQuery.data.members.length > 0 && (
-                <MemberMetricsPreview metric={metricsPreviewQuery.data.members[0]} />
-              )}
-              {metricsPreviewQuery.data && metricsPreviewQuery.data.members.length === 0 && (
-                <p className="text-sm text-rf-text-muted">No members to display yet.</p>
-              )}
-            </div>
-          </button>
-        )}
-
-        {canViewAs && (
-          <button
-            type="button"
-            onClick={() => setShowMemberPicker(true)}
-            className="glass-card flex items-center gap-4 rounded-3xl px-5 py-4"
-          >
-            <p className="text-sm font-semibold text-rf-text">View as</p>
-            <span className="ml-auto text-sm font-semibold text-rf-text-muted">{viewAsLabel}</span>
-            <span className="text-xs text-rf-text-muted">⌄</span>
-          </button>
-        )}
-
-        {!selectedMemberId && canViewAs && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">
-            Select a member to view their performance cards.
+            )}
+            {metricsPreviewQuery.data && metricsPreviewQuery.data.members.length > 0 && (
+              <MemberMetricsPreview metric={metricsPreviewQuery.data.members[0]} />
+            )}
+            {metricsPreviewQuery.data && metricsPreviewQuery.data.members.length === 0 && (
+              <p className="text-sm text-rf-text-muted">No members to display yet.</p>
+            )}
           </div>
-        )}
+        </button>
+      )}
 
-        {selectedMemberId && (
-          <div className="grid gap-5">
-            {canViewAs ? (
+      {canViewAs && (
+        <button
+          type="button"
+          onClick={() => setShowMemberPicker(true)}
+          className="glass-card flex items-center gap-4 rounded-3xl px-5 py-4"
+        >
+          <p className="text-sm font-semibold text-rf-text">View as</p>
+          <span className="ml-auto text-sm font-semibold text-rf-text-muted">{viewAsLabel}</span>
+          <span className="text-xs text-rf-text-muted">⌄</span>
+        </button>
+      )}
+
+      {!selectedMemberId && canViewAs && (
+        <GlassCard padding="lg" className="text-sm text-rf-text-muted">
+          Select a member to view their performance cards.
+        </GlassCard>
+      )}
+
+      {selectedMemberId && (
+        <div className="grid gap-5">
+          {canViewAs ? (
+            <MemberOverviewCard
+              metric={memberOverview}
+              programStart={program?.start_date}
+              programEnd={program?.end_date}
+            />
+          ) : (
+            <div className="grid gap-5 md:grid-cols-2">
               <MemberOverviewCard
                 metric={memberOverview}
                 programStart={program?.start_date}
                 programEnd={program?.end_date}
               />
-            ) : (
-              <div className="grid gap-5 md:grid-cols-2">
-                <MemberOverviewCard
-                  metric={memberOverview}
-                  programStart={program?.start_date}
-                  programEnd={program?.end_date}
-                />
-                {memberOverview && <MemberMetricsSingleCard metric={memberOverview} />}
-              </div>
-            )}
-
-            <div className="grid gap-5 md:grid-cols-2">
-              <MemberHistoryCard
-                points={memberHistoryQuery.data?.buckets ?? []}
-                label={memberHistoryQuery.data?.label ?? ""}
-                dailyAverage={memberHistoryQuery.data?.daily_average ?? 0}
-                onClick={() => router.push(`/members/history?memberId=${selectedMemberId}&name=${encodeURIComponent(selectedMember?.member_name ?? "")}`)}
-              />
-              <MemberStreakCard
-                current={memberStreakQuery.data?.currentStreakDays ?? 0}
-                longest={memberStreakQuery.data?.longestStreakDays ?? 0}
-                onClick={() => router.push(`/members/streaks?memberId=${selectedMemberId}&name=${encodeURIComponent(selectedMember?.member_name ?? "")}`)}
-              />
+              {memberOverview && <MemberMetricsSingleCard metric={memberOverview} />}
             </div>
+          )}
 
-            <div className="grid gap-5 md:grid-cols-2">
-              <MemberRecentCard
-                items={memberRecentQuery.data?.items ?? []}
-                onClick={() => router.push(`/members/workouts?memberId=${selectedMemberId}&name=${encodeURIComponent(selectedMember?.member_name ?? "")}`)}
-              />
-              <MemberHealthCard
-                items={memberHealthQuery.data?.items ?? []}
-                onClick={() => router.push(`/members/health?memberId=${selectedMemberId}&name=${encodeURIComponent(selectedMember?.member_name ?? "")}`)}
-              />
-            </div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <MemberHistoryCard
+              points={memberHistoryQuery.data?.buckets ?? []}
+              label={memberHistoryQuery.data?.label ?? ""}
+              dailyAverage={memberHistoryQuery.data?.daily_average ?? 0}
+              onClick={() => router.push(`/members/history?memberId=${selectedMemberId}&name=${encodeURIComponent(selectedMember?.member_name ?? "")}`)}
+            />
+            <MemberStreakCard
+              current={memberStreakQuery.data?.currentStreakDays ?? 0}
+              longest={memberStreakQuery.data?.longestStreakDays ?? 0}
+              onClick={() => router.push(`/members/streaks?memberId=${selectedMemberId}&name=${encodeURIComponent(selectedMember?.member_name ?? "")}`)}
+            />
           </div>
-        )}
-      </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <MemberRecentCard
+              items={memberRecentQuery.data?.items ?? []}
+              onClick={() => router.push(`/members/workouts?memberId=${selectedMemberId}&name=${encodeURIComponent(selectedMember?.member_name ?? "")}`)}
+            />
+            <MemberHealthCard
+              items={memberHealthQuery.data?.items ?? []}
+              onClick={() => router.push(`/members/health?memberId=${selectedMemberId}&name=${encodeURIComponent(selectedMember?.member_name ?? "")}`)}
+            />
+          </div>
+        </div>
+      )}
 
       {showMemberPicker && (
         <MemberPickerModal
@@ -316,7 +309,7 @@ export default function MembersPage() {
           }}
         />
       )}
-    </div>
+    </PageShell>
   );
 }
 
@@ -394,7 +387,7 @@ function MemberOverviewCard({
   const progressPct = metric && totalDays ? Math.round((metric.active_days / totalDays) * 100) : 0;
 
   return (
-    <div className="glass-card rounded-3xl p-5">
+    <GlassCard>
       <p className="text-sm font-semibold text-rf-text-muted">Member Overview</p>
       {metric ? (
         <>
@@ -438,13 +431,13 @@ function MemberOverviewCard({
       ) : (
         <p className="mt-3 text-sm text-rf-text-muted">No workouts logged yet.</p>
       )}
-    </div>
+    </GlassCard>
   );
 }
 
 function MemberMetricsSingleCard({ metric }: { metric: MemberMetrics }) {
   return (
-    <div className="glass-card rounded-3xl p-5">
+    <GlassCard>
       <p className="text-sm font-semibold text-rf-text-muted">Member Performance Metrics</p>
       <div className="mt-3 flex items-center justify-between">
         <div>
@@ -487,7 +480,7 @@ function MemberMetricsSingleCard({ metric }: { metric: MemberMetrics }) {
           <FlameIcon className="h-3.5 w-3.5" /> Current streak {metric.current_streak}d
         </span>
       </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -521,21 +514,15 @@ function MemberHistoryCard({
       <div className="mt-4 h-36">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={points}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--rf-border)" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--rf-text-muted)" }} />
+            <CartesianGrid {...CHART_GRID_PROPS} />
+            <XAxis dataKey="label" tick={CHART_AXIS_TICK} />
             <YAxis hide />
             <Tooltip
-              contentStyle={{
-                borderRadius: 12,
-                border: "1px solid var(--rf-border)",
-                backgroundColor: "var(--rf-surface)",
-                color: "var(--rf-text)",
-                boxShadow: "0 14px 24px rgba(0, 0, 0, 0.25)"
-              }}
-              labelStyle={{ color: "var(--rf-text-muted)" }}
+              contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+              labelStyle={CHART_TOOLTIP_LABEL_STYLE}
               formatter={(value: number) => [value, "Workouts"]}
             />
-            <Bar dataKey="workouts" fill="#ff8b1f" radius={[8, 8, 0, 0]} />
+            <Bar dataKey="workouts" fill={CHART_COLORS[0]} radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -649,21 +636,9 @@ function MemberPickerModal({
     member.member_name.toLowerCase().includes(search.trim().toLowerCase())
   );
 
-  useEffect(() => {
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    body.classList.add("modal-open");
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.classList.remove("modal-open");
-    };
-  }, []);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="modal-surface relative z-10 w-full max-w-lg rounded-3xl p-6">
+    <Modal open onClose={onClose}>
+      <div className="modal-surface w-full max-w-lg rounded-3xl p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-rf-text">View as</h2>
           <button
@@ -707,49 +682,6 @@ function MemberPickerModal({
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase())
-    .slice(0, 2)
-    .join("");
-}
-
-function sleepLabel(value: number | null) {
-  if (value === null || value === undefined) return "—";
-  return `${value.toFixed(1)} hrs`;
-}
-
-function dietLabel(value: number | null) {
-  if (value === null || value === undefined) return "—";
-  return `${value}/5`;
-}
-
-function FlameIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path
-        d="M10 2.8c1.6 2 1.2 3.6.2 4.8-1.1 1.4-2.7 2.1-2.7 4a2.9 2.9 0 0 0 5.8 0c0-1.8-.8-3.1-1.6-4.2-.5-.7-1-1.4-1.7-2.6z"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M6.5 12.6c-.1 2.8 2 4.6 3.5 4.6 1.6 0 3.7-1.8 3.6-4.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function MailIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="5" width="14" height="10" rx="2" />
-      <path d="M4 6l6 4 6-4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    </Modal>
   );
 }

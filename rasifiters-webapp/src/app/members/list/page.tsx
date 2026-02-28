@@ -1,33 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth/auth-provider";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
 import { fetchMembershipDetails, type MembershipDetail } from "@/lib/api/programs";
-import { BackButton } from "@/components/BackButton";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { initials } from "@/lib/format";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function MembersListPage() {
   const router = useRouter();
-  const { session, isBootstrapping } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const programId = program?.id ?? "";
+  const { session, program, token, programId } = useAuthGuard();
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
 
   const membersQuery = useQuery({
     queryKey: ["members", "details", programId],
@@ -47,53 +37,37 @@ export default function MembersListPage() {
   }, [activeMembers, membersQuery.data, search]);
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-4xl space-y-6">
-        <header className="space-y-2">
-          <BackButton fallbackHref="/members" />
-          <div>
-            <h1 className="text-2xl font-bold">Members</h1>
-            <p className="mt-1 text-sm text-rf-text-muted">{program?.name ?? "Program"}</p>
-          </div>
-        </header>
+    <PageShell maxWidth="4xl">
+      <PageHeader title="Members" subtitle={program?.name ?? "Program"} backHref="/members" />
 
-        <div className="glass-card rounded-3xl p-5">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search members"
-            className="input-shell w-full rounded-2xl px-4 py-3 text-sm font-medium"
-          />
+      <GlassCard>
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search members"
+          className="input-shell w-full rounded-2xl px-4 py-3 text-sm font-medium"
+        />
+      </GlassCard>
+
+      {membersQuery.isLoading && <LoadingState message="Loading members..." />}
+
+      {membersQuery.isError && <ErrorState message={(membersQuery.error as Error).message} />}
+
+      {membersQuery.data && filtered.length === 0 && <EmptyState message="No members found." />}
+
+      {membersQuery.data && filtered.length > 0 && (
+        <div className="grid gap-3">
+          {filtered.map((member) => (
+            <MemberRow
+              key={member.member_id}
+              member={member}
+              canEdit={isGlobalAdmin}
+              onClick={() => router.push(`/members/detail?memberId=${member.member_id}`)}
+            />
+          ))}
         </div>
-
-        {membersQuery.isLoading && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">Loading members...</div>
-        )}
-
-        {membersQuery.isError && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-rf-danger">
-            {(membersQuery.error as Error).message}
-          </div>
-        )}
-
-        {membersQuery.data && filtered.length === 0 && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">No members found.</div>
-        )}
-
-        {membersQuery.data && filtered.length > 0 && (
-          <div className="grid gap-3">
-            {filtered.map((member) => (
-              <MemberRow
-                key={member.member_id}
-                member={member}
-                canEdit={isGlobalAdmin}
-                onClick={() => router.push(`/members/detail?memberId=${member.member_id}`)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </PageShell>
   );
 }
 
@@ -107,7 +81,7 @@ function MemberRow({
   onClick: () => void;
 }) {
   const content = (
-    <div className="glass-card rounded-3xl p-4">
+    <GlassCard padding="sm">
       <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rf-surface-muted text-sm font-semibold">
           {initials(member.member_name)}
@@ -127,7 +101,7 @@ function MemberRow({
           )}
         </div>
       </div>
-    </div>
+    </GlassCard>
   );
 
   if (!canEdit) return content;
@@ -136,13 +110,4 @@ function MemberRow({
       {content}
     </button>
   );
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase())
-    .slice(0, 2)
-    .join("");
 }

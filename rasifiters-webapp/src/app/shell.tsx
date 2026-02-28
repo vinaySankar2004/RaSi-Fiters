@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { NotificationsGate } from "@/components/NotificationsGate";
+import { SummaryIcon, MembersIcon, LifestyleIcon, ProgramIcon } from "@/components/icons";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -73,64 +74,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
       )}
     </div>
-  );
-}
-
-function SummaryIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <rect x="2" y="9" width="3" height="7" rx="1.2" fill={active ? "#ff8b1f" : "#9aa0aa"} />
-      <rect x="8.5" y="6" width="3" height="10" rx="1.2" fill={active ? "#ff8b1f" : "#9aa0aa"} />
-      <rect x="15" y="3" width="3" height="13" rx="1.2" fill={active ? "#ff8b1f" : "#9aa0aa"} />
-    </svg>
-  );
-}
-
-function MembersIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="20" viewBox="0 0 22 20" fill="none" aria-hidden="true">
-      <circle cx="7" cy="6" r="3" fill={active ? "#ff8b1f" : "#9aa0aa"} />
-      <circle cx="15.5" cy="7" r="2.6" fill={active ? "#ff8b1f" : "#9aa0aa"} opacity="0.8" />
-      <path
-        d="M2 18c0-2.8 2.6-5 5.8-5s5.8 2.2 5.8 5"
-        stroke={active ? "#ff8b1f" : "#9aa0aa"}
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M12 17c.4-1.8 2-3.2 4.1-3.2 2.2 0 3.9 1.4 4 3.2"
-        stroke={active ? "#ff8b1f" : "#9aa0aa"}
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function LifestyleIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path
-        d="M15.5 4.5c-4.7.4-8.8 3.2-10.5 8.1 3.3-.2 6-1.1 8-2.8 2.4-2 3.2-4.4 2.5-5.3z"
-        fill={active ? "#ff8b1f" : "#9aa0aa"}
-      />
-      <path
-        d="M6.2 15.5c2.3.6 4.6-.2 6.2-1.8"
-        stroke={active ? "#ff8b1f" : "#9aa0aa"}
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function ProgramIcon({ active }: { active: boolean }) {
-  return (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <rect x="2" y="2" width="7" height="7" rx="2" fill={active ? "#ff8b1f" : "#9aa0aa"} />
-      <rect x="11" y="2" width="7" height="7" rx="2" fill={active ? "#ff8b1f" : "#9aa0aa"} opacity="0.85" />
-      <rect x="2" y="11" width="7" height="7" rx="2" fill={active ? "#ff8b1f" : "#9aa0aa"} opacity="0.85" />
-      <rect x="11" y="11" width="7" height="7" rx="2" fill={active ? "#ff8b1f" : "#9aa0aa"} />
-    </svg>
   );
 }

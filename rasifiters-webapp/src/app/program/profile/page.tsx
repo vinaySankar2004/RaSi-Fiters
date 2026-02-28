@@ -6,18 +6,20 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { deleteAccount as deleteAccountApi } from "@/lib/api/auth";
 import { fetchMemberProfile, updateMemberProfile, type MemberProfile } from "@/lib/api/members";
-import { BackButton } from "@/components/BackButton";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { initials } from "@/lib/format";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Prefer not to say"] as const;
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { session, isBootstrapping, setSession, signOut } = useAuth();
+  const { session, program, token } = useAuthGuard();
+  const { setSession, signOut } = useAuth();
   const queryClient = useQueryClient();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const fallbackHref = program?.id ? "/program" : "/programs";
 
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const roleLabel = isGlobalAdmin
@@ -33,12 +35,6 @@ export default function ProfilePage() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const normalizedGender = gender.trim();
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
 
   const profileQuery = useQuery({
     queryKey: ["account", "profile", session?.user.id],
@@ -103,30 +99,22 @@ export default function ProfilePage() {
     }
   });
 
-  const initials = useMemo(() => {
+  const userInitials = useMemo(() => {
     const name = `${firstName} ${lastName}`.trim() || session?.user.memberName || session?.user.username || "U";
-    return name
-      .split(" ")
-      .filter(Boolean)
-      .map((part) => part[0]?.toUpperCase())
-      .slice(0, 2)
-      .join("");
+    return initials(name);
   }, [firstName, lastName, session?.user.memberName, session?.user.username]);
 
   const canSave = firstName.trim().length > 0 && lastName.trim().length > 0 && !updateMutation.isPending;
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-3xl space-y-6">
-        <header className="space-y-2">
-          <BackButton fallbackHref={fallbackHref} />
-          <h1 className="text-2xl font-bold">My Profile</h1>
-        </header>
+    <>
+      <PageShell maxWidth="3xl">
+        <PageHeader title="My Profile" backHref="/program" />
 
-        <div className="glass-card rounded-3xl p-6 space-y-6">
+        <GlassCard padding="lg" className="space-y-6">
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-lg font-semibold text-amber-600">
-              {initials}
+              {userInitials}
             </div>
             <div>
               <p className="text-lg font-semibold text-rf-text">
@@ -206,75 +194,18 @@ export default function ProfilePage() {
               </p>
             </div>
           )}
-        </div>
-      </div>
+        </GlassCard>
+      </PageShell>
 
-      <ConfirmModal
+      <ConfirmDialog
         open={showDeleteConfirm}
         title="Delete Account?"
         description="This action cannot be undone. All your data, including workout logs, health logs, and program memberships will be permanently deleted."
         confirmLabel={deleteMutation.isPending ? "Deleting..." : "Delete"}
+        danger
         onConfirm={() => deleteMutation.mutate()}
         onClose={() => setShowDeleteConfirm(false)}
       />
-    </div>
-  );
-}
-
-function ConfirmModal({
-  open,
-  title,
-  description,
-  confirmLabel,
-  onConfirm,
-  onClose
-}: {
-  open: boolean;
-  title: string;
-  description: string;
-  confirmLabel: string;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    if (!open) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    body.classList.add("modal-open");
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.classList.remove("modal-open");
-    };
-  }, [open]);
-
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="modal-surface relative z-10 w-full max-w-md rounded-3xl p-6">
-        <h3 className="text-lg font-semibold text-rf-text">{title}</h3>
-        <p className="mt-2 text-sm text-rf-text-muted">{description}</p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="pill-button rounded-2xl px-4 py-3 text-sm font-semibold"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-            className="danger-pill rounded-2xl px-4 py-3 text-sm font-semibold"
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

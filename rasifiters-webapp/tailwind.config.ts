@@ -19,7 +19,14 @@ const config: Config = {
         "rf-accent-strong": "var(--rf-accent-strong)",
         "rf-success": "var(--rf-success)",
         "rf-danger": "var(--rf-danger)",
-        "rf-shadow": "var(--rf-shadow)"
+        "rf-info": "var(--rf-info)",
+        "rf-warning": "var(--rf-warning)",
+        "rf-shadow": "var(--rf-shadow)",
+        "rf-chart-1": "var(--rf-chart-1)",
+        "rf-chart-2": "var(--rf-chart-2)",
+        "rf-chart-3": "var(--rf-chart-3)",
+        "rf-chart-4": "var(--rf-chart-4)",
+        "rf-chart-5": "var(--rf-chart-5)"
       },
       boxShadow: {
         "rf-soft": "0 12px 30px rgba(15, 18, 25, 0.08)",

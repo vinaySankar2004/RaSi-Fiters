@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth/auth-provider";
 import { saveActiveProgram } from "@/lib/storage";
 import { updateProgram } from "@/lib/api/programs";
 import { Select } from "@/components/Select";
-import { BackButton } from "@/components/BackButton";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { GlassCard } from "@/components/ui/GlassCard";
 
 const STATUS_OPTIONS = [
   { value: "planned", label: "Planned" },
@@ -19,10 +20,7 @@ const STATUS_OPTIONS = [
 export default function ProgramEditPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { session, isBootstrapping } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const programId = program?.id ?? "";
+  const { session, program, token, programId } = useAuthGuard();
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const isProgramAdmin = program?.my_role === "admin" || isGlobalAdmin;
 
@@ -31,18 +29,6 @@ export default function ProgramEditPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
 
   useEffect(() => {
     if (program?.id && !isProgramAdmin) {
@@ -87,68 +73,66 @@ export default function ProgramEditPage() {
   const canSave = name.trim().length > 0 && !updateMutation.isPending;
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-2xl space-y-6">
-        <header className="space-y-2">
-          <BackButton fallbackHref="/program" />
-          <h1 className="text-2xl font-bold">Edit Program</h1>
-          <p className="text-sm text-rf-text-muted">Update the program details.</p>
-        </header>
+    <PageShell maxWidth="2xl">
+      <PageHeader
+        title="Edit Program"
+        subtitle="Update the program details."
+        backHref="/program"
+      />
 
-        <div className="glass-card rounded-3xl p-6 space-y-5">
+      <GlassCard padding="lg" className="space-y-5">
+        <div>
+          <label className="text-sm font-semibold text-rf-text">Program name</label>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
+            placeholder="Program name"
+          />
+        </div>
+
+        <Select
+          label="Status"
+          value={status}
+          options={STATUS_OPTIONS}
+          onChange={setStatus}
+        />
+
+        <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="text-sm font-semibold text-rf-text">Program name</label>
+            <label className="text-sm font-semibold text-rf-text">Start date</label>
             <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
+              type="date"
+              value={startDate}
+              onChange={(event) => setStartDate(event.target.value)}
               className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-              placeholder="Program name"
             />
           </div>
-
-          <Select
-            label="Status"
-            value={status}
-            options={STATUS_OPTIONS}
-            onChange={setStatus}
-          />
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-semibold text-rf-text">Start date</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(event) => setStartDate(event.target.value)}
-                className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-semibold text-rf-text">End date</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
-                className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-              />
-            </div>
+          <div>
+            <label className="text-sm font-semibold text-rf-text">End date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(event) => setEndDate(event.target.value)}
+              className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
+            />
           </div>
-
-          {errorMessage && <p className="text-sm font-semibold text-rf-danger">{errorMessage}</p>}
-
-          <button
-            type="button"
-            disabled={!canSave}
-            onClick={() => {
-              setErrorMessage(null);
-              updateMutation.mutate();
-            }}
-            className="w-full rounded-2xl bg-rf-accent px-4 py-3 text-sm font-semibold text-black disabled:opacity-50"
-          >
-            {updateMutation.isPending ? "Saving..." : "Save changes"}
-          </button>
         </div>
-      </div>
-    </div>
+
+        {errorMessage && <p className="text-sm font-semibold text-rf-danger">{errorMessage}</p>}
+
+        <button
+          type="button"
+          disabled={!canSave}
+          onClick={() => {
+            setErrorMessage(null);
+            updateMutation.mutate();
+          }}
+          className="w-full rounded-2xl bg-rf-accent px-4 py-3 text-sm font-semibold text-black disabled:opacity-50"
+        >
+          {updateMutation.isPending ? "Saving..." : "Save changes"}
+        </button>
+      </GlassCard>
+    </PageShell>
   );
 }

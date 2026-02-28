@@ -25,3 +25,36 @@ export function formatInviteDate(dateString?: string | null) {
     year: "numeric"
   })}`;
 }
+
+export function initials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase())
+    .slice(0, 2)
+    .join("");
+}
+
+export function sleepLabel(value: number | null) {
+  if (value === null || value === undefined) return "—";
+  return `${value.toFixed(1)} hrs`;
+}
+
+export function dietLabel(value: number | null) {
+  if (value === null || value === undefined) return "—";
+  return `${value}/5`;
+}
+
+export function escapeCsv(value: string) {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+export function downloadCsv(filename: string, data: string) {
+  const blob = new Blob([data], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}

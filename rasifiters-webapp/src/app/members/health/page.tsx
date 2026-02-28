@@ -5,14 +5,18 @@ export const dynamic = "force-dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth/auth-provider";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
 import { fetchMemberHealthLogs, type MemberHealthItem } from "@/lib/api/members";
 import { deleteDailyHealthLog, updateDailyHealthLog } from "@/lib/api/logs";
 import { Select } from "@/components/Select";
-import { formatShortDate } from "@/lib/format";
-import { BackButton } from "@/components/BackButton";
+import { sleepLabel, dietLabel, downloadCsv } from "@/lib/format";
 import { useClientSearchParams } from "@/lib/use-client-search-params";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Modal } from "@/components/ui/Modal";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const SORT_FIELDS = [
   { value: "date", label: "Date" },
@@ -35,10 +39,7 @@ export default function MemberHealthPage() {
   const params = useClientSearchParams();
   const memberId = params.get("memberId") ?? "";
   const memberName = params.get("name") ?? "Member";
-  const { session, isBootstrapping } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const programId = program?.id ?? "";
+  const { session, program, token, programId } = useAuthGuard();
   const queryClient = useQueryClient();
 
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
@@ -57,18 +58,6 @@ export default function MemberHealthPage() {
   const [editSleepMinutes, setEditSleepMinutes] = useState("");
   const [editDiet, setEditDiet] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
 
   useEffect(() => {
     if (!memberId) return;
@@ -187,95 +176,89 @@ export default function MemberHealthPage() {
   };
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-4xl space-y-6">
-        <header className="space-y-2">
-          <BackButton fallbackHref="/members" />
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">View Health</h1>
-              <p className="text-sm text-rf-text-muted">{memberName}</p>
+    <PageShell maxWidth="4xl">
+      <PageHeader
+        title="View Health"
+        subtitle={memberName}
+        backHref="/members"
+        actions={
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={!healthQuery.data || healthQuery.data.items.length === 0}
+            className="pill-button rounded-full px-4 py-2 text-xs font-semibold transition disabled:opacity-40"
+          >
+            Export CSV
+          </button>
+        }
+      />
+
+      <GlassCard className="relative z-30">
+        <div className="grid gap-4 md:grid-cols-[1fr,200px,200px,140px]">
+          <Select value={sortField} options={SORT_FIELDS} onChange={setSortField} placeholder="Sort" />
+          <Select value={sortDir} options={SORT_DIRS} onChange={setSortDir} placeholder="Direction" />
+          <button
+            type="button"
+            onClick={() => setShowFilter(true)}
+            className="mt-2 rounded-2xl bg-rf-surface-muted px-4 py-3 text-sm font-semibold text-rf-text-muted"
+          >
+            Filter
+          </button>
+          {formattedFilters && (
+            <div className="rounded-2xl bg-rf-surface-muted px-4 py-3 text-xs text-rf-text-muted">
+              {formattedFilters}
             </div>
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={!healthQuery.data || healthQuery.data.items.length === 0}
-              className="pill-button rounded-full px-4 py-2 text-xs font-semibold transition disabled:opacity-40"
-            >
-              Export CSV
-            </button>
-          </div>
-        </header>
-
-        <div className="glass-card relative z-30 rounded-3xl p-5">
-          <div className="grid gap-4 md:grid-cols-[1fr,200px,200px,140px]">
-            <Select value={sortField} options={SORT_FIELDS} onChange={setSortField} placeholder="Sort" />
-            <Select value={sortDir} options={SORT_DIRS} onChange={setSortDir} placeholder="Direction" />
-            <button
-              type="button"
-              onClick={() => setShowFilter(true)}
-              className="mt-2 rounded-2xl bg-rf-surface-muted px-4 py-3 text-sm font-semibold text-rf-text-muted"
-            >
-              Filter
-            </button>
-            {formattedFilters && (
-              <div className="rounded-2xl bg-rf-surface-muted px-4 py-3 text-xs text-rf-text-muted">
-                {formattedFilters}
-              </div>
-            )}
-          </div>
+          )}
         </div>
+      </GlassCard>
 
-        {errorMessage && <p className="text-sm font-semibold text-rf-danger">{errorMessage}</p>}
+      {errorMessage && <p className="text-sm font-semibold text-rf-danger">{errorMessage}</p>}
 
-        {healthQuery.isLoading && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">Loading daily health logs...</div>
-        )}
+      {healthQuery.isLoading && <LoadingState message="Loading daily health logs..." />}
 
-        {healthQuery.data && healthQuery.data.items.length === 0 && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">No daily health logs found.</div>
-        )}
+      {healthQuery.data && healthQuery.data.items.length === 0 && (
+        <EmptyState message="No daily health logs found." />
+      )}
 
-        {healthQuery.data && healthQuery.data.items.length > 0 && (
-          <div className="grid gap-3">
-            {healthQuery.data.items.map((item) => (
-              <div key={item.id} className="glass-card rounded-3xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-base font-semibold text-rf-text">Sleep {sleepLabel(item.sleepHours)}</p>
-                    <p className="text-xs text-rf-text-muted">{item.logDate}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-rf-text">Diet {dietLabel(item.foodQuality)}</p>
-                  </div>
+      {healthQuery.data && healthQuery.data.items.length > 0 && (
+        <div className="grid gap-3">
+          {healthQuery.data.items.map((item) => (
+            <GlassCard key={item.id} padding="sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-base font-semibold text-rf-text">Sleep {sleepLabel(item.sleepHours)}</p>
+                  <p className="text-xs text-rf-text-muted">{item.logDate}</p>
                 </div>
-                {canEdit && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(item)}
-                      className="rounded-full bg-rf-surface-muted px-3 py-1 text-xs font-semibold text-rf-text-muted"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const confirmed = window.confirm("Delete this daily health log?");
-                        if (!confirmed) return;
-                        deleteMutation.mutate(item);
-                      }}
-                      className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                )}
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-rf-text">Diet {dietLabel(item.foodQuality)}</p>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              {canEdit && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(item)}
+                    className="rounded-full bg-rf-surface-muted px-3 py-1 text-xs font-semibold text-rf-text-muted"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const confirmed = window.confirm("Delete this daily health log?");
+                      if (!confirmed) return;
+                      deleteMutation.mutate(item);
+                    }}
+                    className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600"
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </GlassCard>
+          ))}
+        </div>
+      )}
 
       <Modal open={showFilter} onClose={() => setShowFilter(false)}>
         <div className="modal-surface w-full max-w-md rounded-3xl p-6">
@@ -401,29 +384,7 @@ export default function MemberHealthPage() {
           </div>
         )}
       </Modal>
-    </div>
-  );
-}
-
-function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    if (!open) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    body.classList.add("modal-open");
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.classList.remove("modal-open");
-    };
-  }, [open]);
-
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 flex w-full justify-center overflow-visible">{children}</div>
-    </div>
+    </PageShell>
   );
 }
 
@@ -443,24 +404,4 @@ function splitSleepHours(value: number | null | undefined) {
     minutes = 0;
   }
   return { hours: String(hours), minutes: String(minutes) };
-}
-
-function sleepLabel(value: number | null) {
-  if (value === null || value === undefined) return "—";
-  return `${value.toFixed(1)} hrs`;
-}
-
-function dietLabel(value: number | null) {
-  if (value === null || value === undefined) return "—";
-  return `${value}/5`;
-}
-
-function downloadCsv(filename: string, data: string) {
-  const blob = new Blob([data], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
 }

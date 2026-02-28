@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth/auth-provider";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
 import { fetchMemberMetrics, type MemberMetrics } from "@/lib/api/members";
+import { initials, escapeCsv, downloadCsv } from "@/lib/format";
+import { FlameIcon, SearchIcon } from "@/components/icons";
 import { Select } from "@/components/Select";
-import { BackButton } from "@/components/BackButton";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Modal } from "@/components/ui/Modal";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 const SORT_OPTIONS = [
   { value: "workouts", label: "Workouts" },
@@ -71,29 +77,13 @@ const defaultFilters: MetricsFilters = {
 };
 
 export default function MemberMetricsPage() {
-  const router = useRouter();
-  const { session, isBootstrapping } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const programId = program?.id ?? "";
+  const { program, token, programId } = useAuthGuard();
 
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState("workouts");
   const [direction, setDirection] = useState("desc");
   const [filters, setFilters] = useState<MetricsFilters>(defaultFilters);
   const [showFilters, setShowFilters] = useState(false);
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
 
   const filterParams = useMemo(() => {
     const params: Record<string, string> = {
@@ -171,73 +161,61 @@ export default function MemberMetricsPage() {
   };
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-5xl space-y-6">
-        <header className="space-y-2">
-          <BackButton fallbackHref="/members" />
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Member Performance Metrics</h1>
-              <p className="mt-1 text-sm text-rf-text-muted">
-                {metricsQuery.data ? `${metricsQuery.data.filtered} members` : "Loading metrics..."}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={!metricsQuery.data || metricsQuery.data.members.length === 0}
-              className="pill-button rounded-full px-4 py-2 text-xs font-semibold transition disabled:opacity-40"
-            >
-              Export CSV
-            </button>
-          </div>
-        </header>
+    <PageShell>
+      <PageHeader
+        title="Member Performance Metrics"
+        subtitle={metricsQuery.data ? `${metricsQuery.data.filtered} members` : "Loading metrics..."}
+        backHref="/members"
+        actions={
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={!metricsQuery.data || metricsQuery.data.members.length === 0}
+            className="pill-button rounded-full px-4 py-2 text-xs font-semibold transition disabled:opacity-40"
+          >
+            Export CSV
+          </button>
+        }
+      />
 
-        <div className="glass-card relative z-30 rounded-3xl p-5">
-          <div className="grid gap-4 md:grid-cols-[1fr,220px,220px,140px]">
-            <div className="metric-pill mt-2 flex items-center gap-2 rounded-2xl px-4 py-3">
-              <SearchIcon className="h-4 w-4 text-rf-text-muted" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search member"
-                className="w-full bg-transparent text-sm font-semibold text-rf-text placeholder:text-rf-text-muted focus:outline-none"
-              />
-            </div>
-            <Select value={sortField} options={SORT_OPTIONS} onChange={setSortField} placeholder="Sort" />
-            <Select value={direction} options={DIR_OPTIONS} onChange={setDirection} placeholder="Direction" />
-            <button
-              type="button"
-              onClick={() => setShowFilters(true)}
-              className="metric-pill mt-2 rounded-2xl px-4 py-3 text-sm font-semibold text-rf-text"
-            >
-              Filters
-            </button>
+      <GlassCard className="relative z-30">
+        <div className="grid gap-4 md:grid-cols-[1fr,200px,200px,140px]">
+          <div className="metric-pill mt-2 flex items-center gap-2 rounded-2xl px-4 py-3">
+            <SearchIcon className="h-4 w-4 text-rf-text-muted" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search member"
+              className="w-full bg-transparent text-sm font-semibold text-rf-text placeholder:text-rf-text-muted focus:outline-none"
+            />
           </div>
+          <Select value={sortField} options={SORT_OPTIONS} onChange={setSortField} placeholder="Sort" />
+          <Select value={direction} options={DIR_OPTIONS} onChange={setDirection} placeholder="Direction" />
+          <button
+            type="button"
+            onClick={() => setShowFilters(true)}
+            className="metric-pill mt-2 rounded-2xl px-4 py-3 text-sm font-semibold text-rf-text"
+          >
+            Filters
+          </button>
         </div>
+      </GlassCard>
 
-        {metricsQuery.isLoading && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">Loading metrics...</div>
-        )}
+      {metricsQuery.isLoading && <LoadingState message="Loading metrics..." />}
 
-        {metricsQuery.isError && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-rf-danger">
-            {(metricsQuery.error as Error).message}
-          </div>
-        )}
+      {metricsQuery.isError && <ErrorState message={(metricsQuery.error as Error).message} />}
 
-        {metricsQuery.data && metricsQuery.data.members.length === 0 && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">No members to display.</div>
-        )}
+      {metricsQuery.data && metricsQuery.data.members.length === 0 && (
+        <EmptyState message="No members to display." />
+      )}
 
-        {metricsQuery.data && metricsQuery.data.members.length > 0 && (
-          <div className="grid gap-4">
-            {metricsQuery.data.members.map((metric) => (
-              <MemberMetricsCard key={metric.member_id} metric={metric} hero={sortField} />
-            ))}
-          </div>
-        )}
-      </div>
+      {metricsQuery.data && metricsQuery.data.members.length > 0 && (
+        <div className="grid gap-4">
+          {metricsQuery.data.members.map((metric) => (
+            <MemberMetricsCard key={metric.member_id} metric={metric} hero={sortField} />
+          ))}
+        </div>
+      )}
 
       <Modal open={showFilters} onClose={() => setShowFilters(false)}>
         <MetricsFilterModal
@@ -247,7 +225,7 @@ export default function MemberMetricsPage() {
           onClear={() => setFilters(defaultFilters)}
         />
       </Modal>
-    </div>
+    </PageShell>
   );
 }
 
@@ -281,7 +259,7 @@ function MemberMetricsCard({ metric, hero }: { metric: MemberMetrics; hero: stri
   }, [hero]);
 
   return (
-    <div className="glass-card rounded-3xl p-5">
+    <GlassCard>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="metric-pill flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-rf-text">
@@ -328,7 +306,7 @@ function MemberMetricsCard({ metric, hero }: { metric: MemberMetrics; hero: stri
           <FlameIcon className="h-3.5 w-3.5" /> Current streak {metric.current_streak}d
         </span>
       </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -448,74 +426,5 @@ function FilterRange({
         />
       </div>
     </div>
-  );
-}
-
-function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    if (!open) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    body.classList.add("modal-open");
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.classList.remove("modal-open");
-    };
-  }, [open]);
-
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center px-4 py-6">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 flex w-full justify-center">{children}</div>
-    </div>
-  );
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase())
-    .slice(0, 2)
-    .join("");
-}
-
-function escapeCsv(value: string) {
-  return `"${value.replace(/"/g, '""')}"`;
-}
-
-function downloadCsv(filename: string, data: string) {
-  const blob = new Blob([data], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function SearchIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="9" cy="9" r="5" />
-      <path d="M13 13l4 4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function FlameIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path
-        d="M10 2.8c1.6 2 1.2 3.6.2 4.8-1.1 1.4-2.7 2.1-2.7 4a2.9 2.9 0 0 0 5.8 0c0-1.8-.8-3.1-1.6-4.2-.5-.7-1-1.4-1.7-2.6z"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M6.5 12.6c-.1 2.8 2 4.6 3.5 4.6 1.6 0 3.7-1.8 3.6-4.6"
-        strokeLinecap="round"
-      />
-    </svg>
   );
 }

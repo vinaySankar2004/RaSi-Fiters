@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useAuth } from "@/lib/auth/auth-provider";
 import { fetchProgramMembers, type Member } from "@/lib/api/programs";
 import {
   fetchHealthTimeline,
@@ -16,7 +15,19 @@ import {
   type HealthTimelinePoint,
   type WorkoutTypePopularity
 } from "@/lib/api/lifestyle";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { PageShell } from "@/components/ui/PageShell";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Modal } from "@/components/ui/Modal";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { IconDumbbell as DumbbellIcon } from "@/components/icons";
+import {
+  CHART_COLORS,
+  CHART_TOOLTIP_CONTENT_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+  CHART_AXIS_TICK,
+  CHART_GRID_PROPS
+} from "@/lib/chart-theme";
 
 type PopularityMetricKey = "count" | "totalMinutes" | "avgMinutes";
 
@@ -34,10 +45,7 @@ const POPULARITY_METRICS: PopularityMetric[] = [
 
 export default function LifestylePage() {
   const router = useRouter();
-  const { session, isBootstrapping } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const programId = program?.id ?? "";
+  const { session, program, token, programId } = useAuthGuard();
   const loggedInUserId = session?.user.id;
 
   const globalRole = session?.user.globalRole ?? "standard";
@@ -55,18 +63,6 @@ export default function LifestylePage() {
     if (!programId || !loggedInUserId) return "";
     return `rf:lifestyle:view-as:${programId}:${loggedInUserId}`;
   }, [programId, loggedInUserId]);
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
 
   useEffect(() => {
     setAdminSelectedMember(null);
@@ -169,8 +165,7 @@ export default function LifestylePage() {
   const timelinePoints = healthTimelineQuery.data?.buckets ?? [];
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-5xl space-y-6">
+    <PageShell>
         <header className="flex items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-rf-text">Lifestyle</h1>
@@ -202,9 +197,7 @@ export default function LifestylePage() {
         )}
 
         {!canViewAs && !loggedInUserId && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">
-            Unable to identify the logged-in member.
-          </div>
+          <EmptyState message="Unable to identify the logged-in member." />
         )}
 
         <div className="grid gap-5">
@@ -295,38 +288,24 @@ export default function LifestylePage() {
             isLoading={workoutTypePopularityQuery.isLoading}
           />
         </div>
-      </div>
 
-      {showMemberPicker && (
-        <MemberPickerModal
-          members={membersQuery.data ?? []}
-          selected={adminSelectedMember}
-          allowNone
-          noneLabel={isGlobalAdmin ? "None" : "Admin"}
-          onClose={() => setShowMemberPicker(false)}
-          onSelect={(member) => {
-            setAdminSelectedMember(member);
-            setHasUserChosenViewAs(true);
-            setShowMemberPicker(false);
-            if (viewAsStorageKey) {
-              sessionStorage.setItem(viewAsStorageKey, member ? member.id : "none");
-            }
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function DumbbellIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="2" y="7" width="3" height="6" rx="1" />
-      <rect x="15" y="7" width="3" height="6" rx="1" />
-      <rect x="5.5" y="8" width="3" height="4" rx="1" />
-      <rect x="11.5" y="8" width="3" height="4" rx="1" />
-      <path d="M8.5 10h3" strokeLinecap="round" />
-    </svg>
+      <MemberPickerModal
+        open={showMemberPicker}
+        members={membersQuery.data ?? []}
+        selected={adminSelectedMember}
+        allowNone
+        noneLabel={isGlobalAdmin ? "None" : "Admin"}
+        onClose={() => setShowMemberPicker(false)}
+        onSelect={(member) => {
+          setAdminSelectedMember(member);
+          setHasUserChosenViewAs(true);
+          setShowMemberPicker(false);
+          if (viewAsStorageKey) {
+            sessionStorage.setItem(viewAsStorageKey, member ? member.id : "none");
+          }
+        }}
+      />
+    </PageShell>
   );
 }
 
@@ -344,7 +323,7 @@ function WorkoutStatCard({
   subtitle: string;
 }) {
   return (
-    <div className="glass-card rounded-3xl p-5">
+    <GlassCard padding="md">
       <p className="text-sm font-semibold text-rf-text-muted">{title}</p>
       <div className="mt-2">
         <AccentChip label={chipLabel} accent={accent} />
@@ -353,7 +332,7 @@ function WorkoutStatCard({
         {value}
       </p>
       <p className="mt-2 text-xs font-semibold text-rf-text-muted">{subtitle}</p>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -411,25 +390,19 @@ function LifestyleTimelineCard({
         <div className="mt-4 h-44">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={trimmed}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--rf-border)" />
-              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--rf-text-muted)" }} />
+              <CartesianGrid {...CHART_GRID_PROPS} />
+              <XAxis dataKey="label" tick={CHART_AXIS_TICK} />
               <YAxis hide domain={[0, yMax * 1.1]} />
               <Tooltip
-                contentStyle={{
-                  borderRadius: 12,
-                  border: "1px solid var(--rf-border)",
-                  backgroundColor: "var(--rf-surface)",
-                  color: "var(--rf-text)",
-                  boxShadow: "0 14px 24px rgba(0, 0, 0, 0.25)"
-                }}
-                labelStyle={{ color: "var(--rf-text-muted)" }}
+                contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                labelStyle={CHART_TOOLTIP_LABEL_STYLE}
                 formatter={(value: number, name: string) => {
                   if (name === "sleep_hours") return [`${value} hrs`, "Sleep"];
                   return [`${value} / 5`, "Diet"];
                 }}
               />
-              <Bar dataKey="sleep_hours" fill="#60a5fa" radius={[6, 6, 0, 0]} />
-              <Line type="monotone" dataKey="food_quality" stroke="#22c55e" strokeWidth={2} dot={{ r: 2 }} />
+              <Bar dataKey="sleep_hours" fill={CHART_COLORS[0]} radius={[6, 6, 0, 0]} />
+              <Line type="monotone" dataKey="food_quality" stroke={CHART_COLORS[1]} strokeWidth={2} dot={{ r: 2 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -462,7 +435,7 @@ function WorkoutTypePopularityCard({
   const maxValue = Math.max(1, ...displayTypes.map((item) => metricValue(metric, item)));
 
   return (
-    <div className="glass-card rounded-3xl p-5">
+    <GlassCard padding="md">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-rf-text-muted">Workout Type Popularity</p>
@@ -530,11 +503,12 @@ function WorkoutTypePopularityCard({
           )}
         </>
       )}
-    </div>
+    </GlassCard>
   );
 }
 
 function MemberPickerModal({
+  open,
   members,
   selected,
   allowNone,
@@ -542,6 +516,7 @@ function MemberPickerModal({
   onClose,
   onSelect
 }: {
+  open: boolean;
   members: Member[];
   selected: Member | null;
   allowNone: boolean;
@@ -554,21 +529,9 @@ function MemberPickerModal({
     member.member_name.toLowerCase().includes(search.trim().toLowerCase())
   );
 
-  useEffect(() => {
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    body.classList.add("modal-open");
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.classList.remove("modal-open");
-    };
-  }, []);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="modal-surface relative z-10 w-full max-w-lg rounded-3xl p-6">
+    <Modal open={open} onClose={onClose}>
+      <div className="modal-surface w-full max-w-lg rounded-3xl p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-rf-text">View as</h2>
           <button
@@ -612,7 +575,7 @@ function MemberPickerModal({
           ))}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

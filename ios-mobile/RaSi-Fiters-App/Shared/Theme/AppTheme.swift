@@ -114,6 +114,23 @@ extension Color {
     
     /// Gradient end color for orange gradients
     static let appOrangeGradientEnd = Color(light: Color(red: 1.0, green: 0.75, blue: 0.2), dark: Color(hex: "FFCC70"))
+
+    // MARK: - Chart Palette
+
+    static let chartPalette: [Color] = [
+        Color(red: 0.95, green: 0.60, blue: 0.00),
+        Color(red: 0.00, green: 0.60, blue: 0.90),
+        Color(red: 0.20, green: 0.70, blue: 0.30),
+        Color(red: 0.60, green: 0.35, blue: 0.80),
+        Color(red: 0.95, green: 0.30, blue: 0.35),
+        Color(red: 0.05, green: 0.75, blue: 0.70),
+        Color(red: 0.95, green: 0.45, blue: 0.70),
+        Color(red: 0.35, green: 0.45, blue: 0.90),
+        Color(red: 0.85, green: 0.55, blue: 0.15),
+        Color(red: 0.55, green: 0.80, blue: 0.20),
+        Color(red: 0.10, green: 0.55, blue: 0.50),
+        Color(red: 0.80, green: 0.20, blue: 0.50),
+    ]
 }
 
 // MARK: - Theme-Aware Gradients
@@ -156,7 +173,7 @@ struct AppGradient {
 // MARK: - Adaptive Shadow Modifier
 
 struct AdaptiveShadow: ViewModifier {
-    @Environment(\.colorScheme) var colorScheme
+    @Environment(\.colorScheme) private var colorScheme
     let radius: CGFloat
     let y: CGFloat
     
@@ -179,7 +196,7 @@ extension View {
 // MARK: - Adaptive Tint Modifier
 
 struct AdaptiveTint: ViewModifier {
-    @Environment(\.colorScheme) var colorScheme
+    @Environment(\.colorScheme) private var colorScheme
     
     func body(content: Content) -> some View {
         content.tint(colorScheme == .dark ? Color(hex: "FFB347") : .orange)
@@ -196,7 +213,7 @@ extension View {
 // MARK: - Background Gradient Modifier
 
 struct AdaptiveBackgroundGradient: ViewModifier {
-    @Environment(\.colorScheme) var colorScheme
+    @Environment(\.colorScheme) private var colorScheme
     let topLeading: Bool
     
     func body(content: Content) -> some View {

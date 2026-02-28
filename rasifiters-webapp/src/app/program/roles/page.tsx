@@ -3,36 +3,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth/auth-provider";
 import { fetchMembershipDetails, updateMembership, type MembershipDetail } from "@/lib/api/programs";
-import { BackButton } from "@/components/BackButton";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { initials } from "@/lib/format";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function ManageRolesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { session, isBootstrapping } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const programId = program?.id ?? "";
+  const { session, program, token, programId } = useAuthGuard();
 
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const isProgramAdmin = program?.my_role === "admin" || isGlobalAdmin;
 
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
 
   useEffect(() => {
     if (program?.id && !isProgramAdmin) {
@@ -81,85 +70,77 @@ export default function ManageRolesPage() {
   };
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-3xl space-y-6">
-        <header className="space-y-2">
-          <BackButton fallbackHref="/program" />
-          <h1 className="text-2xl font-bold">Manage Roles</h1>
-          <p className="text-sm text-rf-text-muted">Assign admin, logger, or member roles.</p>
-        </header>
+    <PageShell maxWidth="3xl">
+      <PageHeader
+        title="Manage Roles"
+        subtitle="Assign admin, logger, or member roles."
+        backHref="/program"
+      />
 
-        {errorMessage && <p className="text-sm font-semibold text-rf-danger">{errorMessage}</p>}
+      {errorMessage && <p className="text-sm font-semibold text-rf-danger">{errorMessage}</p>}
 
-        {membersQuery.isLoading && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">Loading roles...</div>
-        )}
+      {membersQuery.isLoading && <LoadingState message="Loading roles..." />}
 
-        {membersQuery.isError && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-rf-danger">
-            {(membersQuery.error as Error).message}
-          </div>
-        )}
+      {membersQuery.isError && <ErrorState message={(membersQuery.error as Error).message} />}
 
-        {membersQuery.data && (
-          <div className="space-y-4">
-            {activeMembers.map((member) => {
-              const isLastActiveAdmin =
-                member.program_role === "admin" && member.status === "active" && activeAdminCount <= 1;
-              return (
-                <div key={member.member_id} className="glass-card rounded-3xl p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="metric-pill flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-rf-text">
-                      {initials(member.member_name)}
-                    </div>
-                    <div>
-                      <p className="text-base font-semibold text-rf-text">{member.member_name}</p>
-                      <p className="text-xs text-rf-text-muted">
-                        {roleLabel(member.program_role)}
-                        {member.global_role === "global_admin" ? " • Global Admin" : ""}
-                      </p>
-                    </div>
-                    {updatingId === member.member_id && (
-                      <span className="ml-auto text-xs text-rf-text-muted">Updating...</span>
-                    )}
+      {membersQuery.data && (
+        <div className="space-y-4">
+          {activeMembers.map((member) => {
+            const isLastActiveAdmin =
+              member.program_role === "admin" && member.status === "active" && activeAdminCount <= 1;
+            return (
+              <GlassCard key={member.member_id} padding="md">
+                <div className="flex items-center gap-4">
+                  <div className="metric-pill flex h-12 w-12 items-center justify-center rounded-full text-sm font-semibold text-rf-text">
+                    {initials(member.member_name)}
                   </div>
-
-                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                    <RoleButton
-                      label="Admin"
-                      active={member.program_role === "admin"}
-                      disabled={isLastActiveAdmin}
-                      onClick={() => handleRoleChange(member, "admin")}
-                      tone="admin"
-                    />
-                    <RoleButton
-                      label="Logger"
-                      active={member.program_role === "logger"}
-                      disabled={isLastActiveAdmin}
-                      onClick={() => handleRoleChange(member, "logger")}
-                      tone="logger"
-                    />
-                    <RoleButton
-                      label="Member"
-                      active={member.program_role === "member"}
-                      disabled={isLastActiveAdmin}
-                      onClick={() => handleRoleChange(member, "member")}
-                      tone="member"
-                    />
-                  </div>
-
-                  {isLastActiveAdmin && (
-                    <p className="mt-3 text-xs text-rf-text-muted">
-                      You cannot remove the last active admin from the program.
+                  <div>
+                    <p className="text-base font-semibold text-rf-text">{member.member_name}</p>
+                    <p className="text-xs text-rf-text-muted">
+                      {roleLabel(member.program_role)}
+                      {member.global_role === "global_admin" ? " • Global Admin" : ""}
                     </p>
+                  </div>
+                  {updatingId === member.member_id && (
+                    <span className="ml-auto text-xs text-rf-text-muted">Updating...</span>
                   )}
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                  <RoleButton
+                    label="Admin"
+                    active={member.program_role === "admin"}
+                    disabled={isLastActiveAdmin}
+                    onClick={() => handleRoleChange(member, "admin")}
+                    tone="admin"
+                  />
+                  <RoleButton
+                    label="Logger"
+                    active={member.program_role === "logger"}
+                    disabled={isLastActiveAdmin}
+                    onClick={() => handleRoleChange(member, "logger")}
+                    tone="logger"
+                  />
+                  <RoleButton
+                    label="Member"
+                    active={member.program_role === "member"}
+                    disabled={isLastActiveAdmin}
+                    onClick={() => handleRoleChange(member, "member")}
+                    tone="member"
+                  />
+                </div>
+
+                {isLastActiveAdmin && (
+                  <p className="mt-3 text-xs text-rf-text-muted">
+                    You cannot remove the last active admin from the program.
+                  </p>
+                )}
+              </GlassCard>
+            );
+          })}
+        </div>
+      )}
+    </PageShell>
   );
 }
 
@@ -214,13 +195,4 @@ function roleLabel(role?: string | null) {
     default:
       return "Member";
   }
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase())
-    .slice(0, 2)
-    .join("");
 }

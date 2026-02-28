@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth/auth-provider";
 import {
   addCustomProgramWorkout,
   deleteCustomProgramWorkout,
@@ -13,15 +11,15 @@ import {
   toggleGlobalWorkoutVisibility,
   type ProgramWorkout
 } from "@/lib/api/program-workouts";
-import { BackButton } from "@/components/BackButton";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Modal } from "@/components/ui/Modal";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 export default function LifestyleWorkoutsPage() {
-  const router = useRouter();
-  const { session, isBootstrapping } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const programId = program?.id ?? "";
+  const { session, program, token, programId } = useAuthGuard();
   const queryClient = useQueryClient();
 
   const globalRole = session?.user.globalRole ?? "standard";
@@ -34,18 +32,6 @@ export default function LifestyleWorkoutsPage() {
   const [newWorkoutName, setNewWorkoutName] = useState("");
   const [editWorkoutName, setEditWorkoutName] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
 
   useEffect(() => {
     if (editTarget) {
@@ -126,16 +112,13 @@ export default function LifestyleWorkoutsPage() {
   const hiddenWorkouts = filtered.filter((workout) => workout.is_hidden);
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-4xl space-y-6">
-        <header className="space-y-2">
-          <BackButton fallbackHref="/lifestyle" />
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold">Workout Types</h1>
-              <p className="text-sm text-rf-text-muted">{program?.name ?? "Program"}</p>
-            </div>
-            {canManage && (
+    <PageShell maxWidth="4xl">
+        <PageHeader
+          title="Workout Types"
+          subtitle={program?.name ?? "Program"}
+          backHref="/lifestyle"
+          actions={
+            canManage ? (
               <button
                 type="button"
                 onClick={() => {
@@ -146,24 +129,22 @@ export default function LifestyleWorkoutsPage() {
               >
                 + Add workout
               </button>
-            )}
-          </div>
-        </header>
+            ) : undefined
+          }
+        />
 
-        <div className="glass-card rounded-3xl p-4">
+        <GlassCard padding="sm">
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search workout types"
             className="input-shell w-full rounded-2xl px-4 py-3 text-sm font-medium"
           />
-        </div>
+        </GlassCard>
 
         {errorMessage && <p className="text-sm font-semibold text-rf-danger">{errorMessage}</p>}
 
-        {workoutsQuery.isLoading && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">Loading workout types...</div>
-        )}
+        {workoutsQuery.isLoading && <LoadingState message="Loading workout types..." />}
 
         {workoutsQuery.data && (
           <div className="space-y-6">
@@ -204,7 +185,6 @@ export default function LifestyleWorkoutsPage() {
             )}
           </div>
         )}
-      </div>
 
       <Modal open={showAdd} onClose={() => setShowAdd(false)}>
         <div className="modal-surface w-full max-w-md rounded-3xl p-6">
@@ -274,7 +254,7 @@ export default function LifestyleWorkoutsPage() {
           </div>
         )}
       </Modal>
-    </div>
+    </PageShell>
   );
 }
 
@@ -294,7 +274,7 @@ function WorkoutSection({
   onDelete: (workout: ProgramWorkout) => void;
 }) {
   return (
-    <div className="glass-card rounded-3xl p-5">
+    <GlassCard padding="md">
       <h2 className="text-sm font-semibold text-rf-text-muted">{title}</h2>
       {workouts.length === 0 ? (
         <p className="mt-4 text-sm text-rf-text-muted">No workouts to show.</p>
@@ -352,29 +332,6 @@ function WorkoutSection({
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    if (!open) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    body.classList.add("modal-open");
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.classList.remove("modal-open");
-    };
-  }, [open]);
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 flex w-full justify-center">{children}</div>
-    </div>
+    </GlassCard>
   );
 }

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useAuth } from "@/lib/auth/auth-provider";
 import { fetchProgramMembers } from "@/lib/api/programs";
 import { fetchProgramWorkouts } from "@/lib/api/program-workouts";
 import {
@@ -21,34 +20,29 @@ import {
 } from "@/lib/api/summary";
 import { addDailyHealthLog, addWorkoutLog } from "@/lib/api/logs";
 import { Select } from "@/components/Select";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { PageShell } from "@/components/ui/PageShell";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Modal } from "@/components/ui/Modal";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { StatusBadge, programStatusVariant } from "@/components/ui/StatusBadge";
+import {
+  CHART_COLORS,
+  CHART_TOOLTIP_CONTENT_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+  CHART_GRID_PROPS
+} from "@/lib/chart-theme";
 
 type PeriodKey = "week" | "month" | "year" | "program";
 
 export default function SummaryPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { session, isBootstrapping } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
+  const { session, program, token, programId } = useAuthGuard();
 
   const summaryPeriod: PeriodKey = "week";
   const [showWorkoutForm, setShowWorkoutForm] = useState(false);
   const [showHealthForm, setShowHealthForm] = useState(false);
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
-
-  const programId = program?.id ?? "";
   const canLogForAny =
     session?.user.globalRole === "global_admin" ||
     program?.my_role === "admin" ||
@@ -165,14 +159,11 @@ export default function SummaryPage() {
   }, [session?.user.memberName, session?.user.username]);
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-5xl space-y-6">
+    <PageShell>
         <SummaryHeader title="Summary" subtitle={program?.name ?? "Program"} initials={userInitials || "RF"} />
 
         {analyticsQuery.isError && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-rf-danger">
-            {(analyticsQuery.error as Error).message}
-          </div>
+          <ErrorState message={(analyticsQuery.error as Error).message} />
         )}
 
         <div className="grid gap-5">
@@ -235,34 +226,33 @@ export default function SummaryPage() {
             <WorkoutTypesCard types={topWorkoutTypes} onClick={() => router.push("/summary/workout-types")} />
           </div>
         </div>
-      </div>
 
-      <Modal open={showWorkoutForm} onClose={() => setShowWorkoutForm(false)}>
-        <LogWorkoutForm
-          canSelectAnyMember={canLogForAny}
-          programId={programId}
-          token={token}
-          userId={session?.user.id}
-          onClose={() => setShowWorkoutForm(false)}
-          onSubmit={(payload) => workoutLogMutation.mutate(payload)}
-          isSaving={workoutLogMutation.isPending}
-          errorMessage={workoutLogMutation.isError ? (workoutLogMutation.error as Error).message : null}
-        />
-      </Modal>
+        <Modal open={showWorkoutForm} onClose={() => setShowWorkoutForm(false)}>
+          <LogWorkoutForm
+            canSelectAnyMember={canLogForAny}
+            programId={programId}
+            token={token}
+            userId={session?.user.id}
+            onClose={() => setShowWorkoutForm(false)}
+            onSubmit={(payload) => workoutLogMutation.mutate(payload)}
+            isSaving={workoutLogMutation.isPending}
+            errorMessage={workoutLogMutation.isError ? (workoutLogMutation.error as Error).message : null}
+          />
+        </Modal>
 
-      <Modal open={showHealthForm} onClose={() => setShowHealthForm(false)}>
-        <LogDailyHealthForm
-          canSelectAnyMember={canLogForAny}
-          programId={programId}
-          token={token}
-          userId={session?.user.id}
-          onClose={() => setShowHealthForm(false)}
-          onSubmit={(payload) => dailyHealthMutation.mutate(payload)}
-          isSaving={dailyHealthMutation.isPending}
-          errorMessage={dailyHealthMutation.isError ? (dailyHealthMutation.error as Error).message : null}
-        />
-      </Modal>
-    </div>
+        <Modal open={showHealthForm} onClose={() => setShowHealthForm(false)}>
+          <LogDailyHealthForm
+            canSelectAnyMember={canLogForAny}
+            programId={programId}
+            token={token}
+            userId={session?.user.id}
+            onClose={() => setShowHealthForm(false)}
+            onSubmit={(payload) => dailyHealthMutation.mutate(payload)}
+            isSaving={dailyHealthMutation.isPending}
+            errorMessage={dailyHealthMutation.isError ? (dailyHealthMutation.error as Error).message : null}
+          />
+        </Modal>
+    </PageShell>
   );
 }
 
@@ -306,7 +296,7 @@ function ProgramProgressCard({ summary }: { summary?: any }) {
   const offset = circumference * (1 - percent / 100);
 
   return (
-    <div className="glass-card w-full rounded-3xl p-6">
+    <GlassCard padding="lg" className="w-full">
       <h3 className="text-left text-lg font-semibold text-rf-text">Program Progress</h3>
       <div className="mt-6 flex flex-col items-center gap-4 text-center">
         <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
@@ -339,7 +329,7 @@ function ProgramProgressCard({ summary }: { summary?: any }) {
             </p>
           </div>
         </div>
-        <StatusPill status={progress?.status ?? "active"} />
+        <StatusBadge variant={programStatusVariant(progress?.status ?? "active")}>{progress?.status ?? "active"}</StatusBadge>
         <div className="flex flex-wrap items-center justify-center gap-6">
           <div>
             <p className="text-sm text-rf-text-muted">Elapsed</p>
@@ -351,7 +341,7 @@ function ProgramProgressCard({ summary }: { summary?: any }) {
           </div>
         </div>
       </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -407,7 +397,7 @@ function StatCard({
   delta?: number;
 }) {
   return (
-    <div className="glass-card rounded-3xl p-5">
+    <GlassCard>
       <p className="text-sm font-semibold text-rf-text-muted">{title}</p>
       <p className="mt-3 text-2xl font-bold text-rf-text">{value}</p>
       <div className="mt-2 flex items-center justify-between text-xs text-rf-text-muted">
@@ -419,7 +409,7 @@ function StatCard({
           </span>
         )}
       </div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -455,22 +445,16 @@ function ActivityTimelineCard({
       <div className="mt-4 h-40">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={points}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--rf-border)" />
-            <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--rf-text-muted)" }} />
-            <YAxis hide />
-            <Tooltip
-              contentStyle={{
-                borderRadius: 12,
-                border: "1px solid var(--rf-border)",
-                backgroundColor: "var(--rf-surface)",
-                color: "var(--rf-text)",
-                boxShadow: "0 14px 24px rgba(0, 0, 0, 0.25)"
-              }}
-              labelStyle={{ color: "var(--rf-text-muted)" }}
-              formatter={(value: number, name: string) => [value, name === "workouts" ? "Workouts" : "Active members"]}
-            />
-            <Bar dataKey="workouts" fill="#ff8b1f" radius={[8, 8, 0, 0]} />
-            <Bar dataKey="active_members" fill="#60a5fa" radius={[8, 8, 0, 0]} />
+                    <CartesianGrid {...CHART_GRID_PROPS} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--rf-text-muted)" }} />
+                    <YAxis hide />
+                    <Tooltip
+                      contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+                      labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+                      formatter={(value: number, name: string) => [value, name === "workouts" ? "Workouts" : "Active members"]}
+                    />
+                    <Bar dataKey="workouts" fill={CHART_COLORS[0]} radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="active_members" fill={CHART_COLORS[1]} radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -502,21 +486,15 @@ function DistributionCard({
       <div className="mt-4 h-40">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={points}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--rf-border)" />
+            <CartesianGrid {...CHART_GRID_PROPS} />
             <XAxis dataKey="day" tick={{ fontSize: 10, fill: "var(--rf-text-muted)" }} />
             <YAxis hide />
             <Tooltip
-              contentStyle={{
-                borderRadius: 12,
-                border: "1px solid var(--rf-border)",
-                backgroundColor: "var(--rf-surface)",
-                color: "var(--rf-text)",
-                boxShadow: "0 14px 24px rgba(0, 0, 0, 0.25)"
-              }}
-              labelStyle={{ color: "var(--rf-text-muted)" }}
+              contentStyle={CHART_TOOLTIP_CONTENT_STYLE}
+              labelStyle={CHART_TOOLTIP_LABEL_STYLE}
               formatter={(value: number) => [value, "Workouts"]}
             />
-            <Bar dataKey="value" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+            <Bar dataKey="value" fill={CHART_COLORS[2]} radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -550,29 +528,6 @@ function WorkoutTypesCard({ types, onClick }: { types: WorkoutType[]; onClick: (
       )}
     </button>
   );
-}
-
-function StatusPill({ status }: { status: string }) {
-  const color = statusColor(status);
-  return (
-    <span
-      className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase"
-      style={{ background: `${color}22`, color }}
-    >
-      {status}
-    </span>
-  );
-}
-
-function statusColor(status?: string | null) {
-  switch ((status ?? "").toLowerCase()) {
-    case "completed":
-      return "#2fb861";
-    case "planned":
-      return "#3b82f6";
-    default:
-      return "#ff8b1f";
-  }
 }
 
 function LogWorkoutForm({
@@ -865,24 +820,3 @@ function LogDailyHealthForm({
   );
 }
 
-function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    if (!open) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    body.classList.add("modal-open");
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.classList.remove("modal-open");
-    };
-  }, [open]);
-
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 flex w-full max-h-[90vh] justify-center overflow-auto">{children}</div>
-    </div>
-  );
-}

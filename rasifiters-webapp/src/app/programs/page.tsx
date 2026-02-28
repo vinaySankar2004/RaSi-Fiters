@@ -21,6 +21,12 @@ import {
 } from "@/lib/api/invites";
 import { formatDateRange, formatInviteDate } from "@/lib/format";
 import { saveActiveProgram } from "@/lib/storage";
+import { PageShell } from "@/components/ui/PageShell";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { Modal } from "@/components/ui/Modal";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { StatusBadge, programStatusVariant } from "@/components/ui/StatusBadge";
+import { IconUser, IconLock, IconPalette, IconDocument, IconLogout } from "@/components/icons";
 
 const STATUS_OPTIONS = ["planned", "active", "completed"] as const;
 
@@ -160,8 +166,8 @@ export default function ProgramsPage() {
   const programs = programsQuery.data ?? [];
 
   return (
-    <div className="relative min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-5xl">
+    <>
+      <PageShell>
         <header className="flex items-center justify-between gap-6">
           <div>
             <h1 className="text-3xl font-bold text-rf-text">My Programs</h1>
@@ -194,7 +200,7 @@ export default function ProgramsPage() {
           </div>
         </header>
 
-        <section className="mt-8 space-y-6">
+        <section className="space-y-6">
           {programsQuery.isLoading && (
             <div className="glass-card rounded-3xl px-6 py-8 text-center text-rf-text-muted">
               Loading programs…
@@ -240,8 +246,7 @@ export default function ProgramsPage() {
             );
           })}
         </section>
-
-      </div>
+      </PageShell>
 
       <Modal open={showActions} onClose={() => setShowActions(false)}>
         <div className="modal-surface flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-3xl p-6">
@@ -405,57 +410,47 @@ export default function ProgramsPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         title="Delete Program?"
-        message={
+        description={
           deleteTarget
-            ? `Are you sure you want to delete \"${deleteTarget.name}\"? This cannot be undone.`
+            ? `Are you sure you want to delete "${deleteTarget.name}"? This cannot be undone.`
             : ""
         }
-        confirmText="Delete"
-        onCancel={() => setDeleteTarget(null)}
+        confirmLabel="Delete"
+        danger
+        onClose={() => setDeleteTarget(null)}
         onConfirm={async () => {
           if (!deleteTarget) return;
           await deleteProgramMutation.mutateAsync(deleteTarget.id);
-          setDeleteTarget(null);
         }}
       />
 
       <ConfirmDialog
         open={showSignOut}
         title="Sign Out"
-        message="Are you sure you want to sign out?"
-        confirmText="Sign Out"
-        onCancel={() => setShowSignOut(false)}
+        description="Are you sure you want to sign out?"
+        confirmLabel="Sign Out"
+        danger
+        onClose={() => setShowSignOut(false)}
         onConfirm={async () => {
           await signOut();
-          setShowSignOut(false);
           router.push("/login");
         }}
       />
 
-      <ConfirmDialog
+      <Modal
         open={!!declineInviteTarget}
-        title="Decline Invitation"
-        message={
-          declineInviteTarget
-            ? `Decline invitation to ${declineInviteTarget.program_name ?? "this program"}?`
-            : ""
-        }
-        confirmText="Decline"
-        onCancel={() => {
+        onClose={() => {
           setDeclineInviteTarget(null);
           setBlockFutureInvites(false);
         }}
-        onConfirm={async () => {
-          if (!declineInviteTarget) return;
-          await respondInviteMutation.mutateAsync({
-            inviteId: declineInviteTarget.invite_id,
-            action: "decline",
-            blockFuture: blockFutureInvites
-          });
-          setDeclineInviteTarget(null);
-          setBlockFutureInvites(false);
-        }}
-        footer={
+      >
+        <div className="modal-surface w-full max-w-md rounded-3xl p-6">
+          <h3 className="text-lg font-semibold text-rf-text">Decline Invitation</h3>
+          <p className="mt-2 text-sm text-rf-text-muted">
+            {declineInviteTarget
+              ? `Decline invitation to ${declineInviteTarget.program_name ?? "this program"}?`
+              : ""}
+          </p>
           <label className="mt-4 flex cursor-pointer items-center gap-3 rounded-2xl border border-rf-border bg-rf-surface-muted px-4 py-3 text-sm font-semibold text-rf-text">
             <input
               type="checkbox"
@@ -465,9 +460,37 @@ export default function ProgramsPage() {
             />
             Block future invites from this program
           </label>
-        }
-      />
-    </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => {
+                setDeclineInviteTarget(null);
+                setBlockFutureInvites(false);
+              }}
+              className="pill-button rounded-2xl px-4 py-3 text-sm font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!declineInviteTarget) return;
+                await respondInviteMutation.mutateAsync({
+                  inviteId: declineInviteTarget.invite_id,
+                  action: "decline",
+                  blockFuture: blockFutureInvites
+                });
+                setDeclineInviteTarget(null);
+                setBlockFutureInvites(false);
+              }}
+              className="danger-pill rounded-2xl px-4 py-3 text-sm font-semibold"
+            >
+              Decline
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }
 
@@ -502,10 +525,9 @@ function ProgramCard({
   const programStatusColor = statusColor(program.status ?? "active");
 
   return (
-    <div
-      className={`glass-card rounded-3xl p-6 transition ${
-        canOpen ? "cursor-pointer hover:shadow-lg" : "opacity-70"
-      }`}
+    <GlassCard
+      padding="lg"
+      className={`transition ${canOpen ? "cursor-pointer hover:shadow-lg" : "opacity-70"}`}
       onClick={onSelect}
     >
       <div className="flex items-start justify-between gap-4">
@@ -513,7 +535,9 @@ function ProgramCard({
           <h3 className="text-lg font-semibold text-rf-text">{program.name}</h3>
           <p className="mt-2 text-sm text-rf-text-muted">{formatDateRange(program.start_date, program.end_date)}</p>
         </div>
-        <StatusPill status={program.status ?? "active"} />
+        <StatusBadge variant={programStatusVariant(program.status ?? "active")}>
+          {program.status ?? "active"}
+        </StatusBadge>
       </div>
 
       {isInvited || isRequested ? (
@@ -586,19 +610,7 @@ function ProgramCard({
           </button>
         </div>
       )}
-    </div>
-  );
-}
-
-function StatusPill({ status }: { status: string }) {
-  const color = statusColor(status);
-  return (
-    <span
-      className="rounded-full px-3 py-1 text-[11px] font-semibold uppercase"
-      style={{ background: `${color}22`, color }}
-    >
-      {status}
-    </span>
+    </GlassCard>
   );
 }
 
@@ -732,7 +744,9 @@ function InviteCard({
             {invite.program_name ?? "Unknown Program"}
           </h4>
         )}
-        <StatusPill status={invite.program_status ?? "active"} />
+        <StatusBadge variant={programStatusVariant(invite.program_status ?? "active")}>
+          {invite.program_status ?? "active"}
+        </StatusBadge>
       </div>
 
       {isAdmin && (invite.invited_member_name || invite.invited_username) && (
@@ -965,74 +979,6 @@ function EditProgramModal({
   );
 }
 
-function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    if (!open) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    body.classList.add("modal-open");
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.classList.remove("modal-open");
-    };
-  }, [open]);
-
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative z-10 flex w-full max-h-[90vh] justify-center overflow-auto">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function ConfirmDialog({
-  open,
-  title,
-  message,
-  confirmText,
-  onCancel,
-  onConfirm,
-  footer
-}: {
-  open: boolean;
-  title: string;
-  message: string;
-  confirmText: string;
-  onCancel: () => void;
-  onConfirm: () => void;
-  footer?: React.ReactNode;
-}) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
-      <div className="modal-surface relative z-10 w-full max-w-md rounded-3xl p-6">
-        <h3 className="text-lg font-semibold text-rf-text">{title}</h3>
-        <p className="mt-2 text-sm text-rf-text-muted">{message}</p>
-        {footer}
-        <div className="mt-6 flex items-center justify-end gap-3">
-          <button
-            className="pill-button rounded-full px-4 py-2 text-sm font-semibold"
-            onClick={onCancel}
-          >
-            Cancel
-          </button>
-          <button
-            className="danger-pill rounded-full px-4 py-2 text-sm font-semibold"
-            onClick={onConfirm}
-          >
-            {confirmText}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function AccountRow({
   title,
   subtitle,
@@ -1070,57 +1016,5 @@ function AccountRow({
       </div>
       <span className={isDanger ? "text-rf-danger" : "text-rf-text-muted"}>›</span>
     </button>
-  );
-}
-
-function IconUser({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <circle cx="10" cy="7" r="3" />
-      <path d="M3 17c1.6-3 5-4.5 7-4.5s5.4 1.5 7 4.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconLock({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <rect x="4" y="9" width="12" height="8" rx="2" />
-      <path d="M6.5 9V6.6a3.5 3.5 0 0 1 7 0V9" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconPalette({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path
-        d="M10 3.2a7 7 0 1 0 0 14h2.2a2 2 0 0 0 0-4H10a3.5 3.5 0 1 1 0-7z"
-        strokeLinejoin="round"
-      />
-      <circle cx="6.5" cy="8" r="1" fill="currentColor" stroke="none" />
-      <circle cx="7.5" cy="12.5" r="1" fill="currentColor" stroke="none" />
-      <circle cx="12.5" cy="8" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function IconDocument({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M6 3.5h5l3 3V16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z" />
-      <path d="M11 3.5V7h3" />
-      <path d="M7.5 10h5M7.5 13h5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconLogout({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7">
-      <path d="M8 4.5H5a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 5 15.5h3" strokeLinecap="round" />
-      <path d="M12 6.5l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M9 9.5h6" strokeLinecap="round" />
-    </svg>
   );
 }

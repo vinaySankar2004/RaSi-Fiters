@@ -5,38 +5,27 @@ export const dynamic = "force-dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/lib/auth/auth-provider";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
 import { fetchMembershipDetails, removeMembership, updateMembership, type MembershipDetail } from "@/lib/api/programs";
-import { BackButton } from "@/components/BackButton";
 import { useClientSearchParams } from "@/lib/use-client-search-params";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { initials } from "@/lib/format";
+import { PageShell } from "@/components/ui/PageShell";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function MemberDetailPage() {
   const router = useRouter();
   const searchParams = useClientSearchParams();
   const memberId = searchParams.get("memberId") ?? "";
-  const { session, isBootstrapping } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const programId = program?.id ?? "";
+  const { session, token, programId } = useAuthGuard();
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
 
   const [joinedAt, setJoinedAt] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
 
   useEffect(() => {
     if (!isGlobalAdmin) {
@@ -98,96 +87,76 @@ export default function MemberDetailPage() {
   };
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-3xl space-y-6">
-        <header className="space-y-2">
-          <BackButton fallbackHref="/members/list" />
-          <h1 className="text-2xl font-bold">Member Details</h1>
-        </header>
+    <PageShell maxWidth="3xl">
+      <PageHeader title="Member Details" backHref="/members/list" />
 
-        {membersQuery.isLoading && (
-          <div className="glass-card rounded-3xl p-6 text-sm text-rf-text-muted">Loading member...</div>
-        )}
+      {membersQuery.isLoading && <LoadingState message="Loading member..." />}
 
-        {membersQuery.isError && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-rf-danger">
-            {(membersQuery.error as Error).message}
-          </div>
-        )}
+      {membersQuery.isError && <ErrorState message={(membersQuery.error as Error).message} />}
 
-        {member && (
-          <div className="glass-card rounded-3xl p-6">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rf-surface-muted text-lg font-semibold">
-                {initials(member.member_name)}
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-rf-text">{member.member_name}</p>
-                <p className="text-sm text-rf-text-muted">@{member.username ?? ""}</p>
-                {member.program_role === "admin" && (
-                  <p className="text-xs font-semibold text-rf-accent">Program Admin</p>
-                )}
-              </div>
+      {member && (
+        <GlassCard padding="lg">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rf-surface-muted text-lg font-semibold">
+              {initials(member.member_name)}
             </div>
-
-            <div className="mt-6 grid gap-3 text-sm text-rf-text-muted">
-              {member.gender && <p>Gender: {member.gender}</p>}
-              {member.date_joined && <p>Account Created: {member.date_joined}</p>}
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <div>
-                <label className="text-sm font-semibold text-rf-text">Joined Program</label>
-                <input
-                  type="date"
-                  value={joinedAt}
-                  onChange={(event) => setJoinedAt(event.target.value)}
-                  className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-                />
-              </div>
-
-              <label className="flex items-center gap-3 text-sm font-semibold text-rf-text">
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(event) => setIsActive(event.target.checked)}
-                />
-                Active Membership
-              </label>
-            </div>
-
-            {errorMessage && <p className="mt-4 text-sm font-semibold text-rf-danger">{errorMessage}</p>}
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="rounded-2xl bg-rf-accent px-4 py-3 text-sm font-semibold text-black disabled:opacity-50"
-              >
-                {isSaving ? "Saving..." : "Save changes"}
-              </button>
-              <button
-                type="button"
-                onClick={handleRemove}
-                disabled={isSaving}
-                className="rounded-2xl bg-red-100 px-4 py-3 text-sm font-semibold text-red-600 disabled:opacity-50"
-              >
-                Remove from program
-              </button>
+            <div>
+              <p className="text-lg font-semibold text-rf-text">{member.member_name}</p>
+              <p className="text-sm text-rf-text-muted">@{member.username ?? ""}</p>
+              {member.program_role === "admin" && (
+                <p className="text-xs font-semibold text-rf-accent">Program Admin</p>
+              )}
             </div>
           </div>
-        )}
-      </div>
-    </div>
+
+          <div className="mt-6 grid gap-3 text-sm text-rf-text-muted">
+            {member.gender && <p>Gender: {member.gender}</p>}
+            {member.date_joined && <p>Account Created: {member.date_joined}</p>}
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <div>
+              <label className="text-sm font-semibold text-rf-text">Joined Program</label>
+              <input
+                type="date"
+                value={joinedAt}
+                onChange={(event) => setJoinedAt(event.target.value)}
+                className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
+              />
+            </div>
+
+            <label className="flex items-center gap-3 text-sm font-semibold text-rf-text">
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(event) => setIsActive(event.target.checked)}
+              />
+              Active Membership
+            </label>
+          </div>
+
+          {errorMessage && <p className="mt-4 text-sm font-semibold text-rf-danger">{errorMessage}</p>}
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="rounded-2xl bg-rf-accent px-4 py-3 text-sm font-semibold text-black disabled:opacity-50"
+            >
+              {isSaving ? "Saving..." : "Save changes"}
+            </button>
+            <button
+              type="button"
+              onClick={handleRemove}
+              disabled={isSaving}
+              className="rounded-2xl bg-red-100 px-4 py-3 text-sm font-semibold text-red-600 disabled:opacity-50"
+            >
+              Remove from program
+            </button>
+          </div>
+        </GlassCard>
+      )}
+    </PageShell>
   );
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase())
-    .slice(0, 2)
-    .join("");
 }

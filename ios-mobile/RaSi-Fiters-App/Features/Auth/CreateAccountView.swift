@@ -17,7 +17,8 @@ struct CreateAccountView: View {
     @State private var alertMessage: String?
     @State private var isShowingAlert: Bool = false
     @State private var navigateToProgramPicker: Bool = false
-    private let privacyPolicyURL = URL(string: "https://vinaysankar2004.github.io/RaSi-Fiters/")!
+    // swiftlint:disable:next force_unwrapping
+    private static let privacyPolicyURL = URL(string: "https://vinaysankar2004.github.io/RaSi-Fiters/")!
     private let genderOptions = ["Female", "Male", "Non-binary", "Prefer not to say"]
 
     var body: some View {
@@ -49,24 +50,24 @@ struct CreateAccountView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
 
                     VStack(spacing: 16) {
-                        inputField(title: "First Name", text: $firstName, isSecure: false, accessory: nil)
-                        inputField(title: "Last Name", text: $lastName, isSecure: false, accessory: nil)
-                        inputField(title: "Username", text: $username, isSecure: false, accessory: nil)
-                        inputField(title: "Email", text: $email, isSecure: false, accessory: nil)
+                        AppInputField(title: "First Name", text: $firstName)
+                        AppInputField(title: "Last Name", text: $lastName)
+                        AppInputField(title: "Username", text: $username)
+                        AppInputField(title: "Email", text: $email)
                         genderPicker
 
-                        inputField(
+                        AppInputField(
                             title: "Password",
                             text: $password,
                             isSecure: !isPasswordVisible,
-                            accessory: AnyView(passwordEyeButton)
+                            accessory: AnyView(AppPasswordToggleButton(isVisible: $isPasswordVisible))
                         )
 
-                        inputField(
+                        AppInputField(
                             title: "Confirm Password",
                             text: $confirmPassword,
                             isSecure: !isConfirmPasswordVisible,
-                            accessory: AnyView(confirmPasswordEyeButton)
+                            accessory: AnyView(AppPasswordToggleButton(isVisible: $isConfirmPasswordVisible))
                         )
 
                         VStack(spacing: 6) {
@@ -114,7 +115,7 @@ struct CreateAccountView: View {
                             .font(.footnote)
                             .foregroundColor(Color(.secondaryLabel))
 
-                        Link("Privacy Policy", destination: privacyPolicyURL)
+                        Link("Privacy Policy", destination: Self.privacyPolicyURL)
                             .font(.footnote.weight(.semibold))
                             .foregroundColor(.appOrange)
                     }
@@ -164,49 +165,6 @@ struct CreateAccountView: View {
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.top, 10)
         .padding(.bottom, 6)
-    }
-
-    private func inputField(
-        title: String,
-        text: Binding<String>,
-        isSecure: Bool,
-        accessory: AnyView?
-    ) -> some View {
-        HStack {
-            if isSecure {
-                SecureField(title, text: text)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-            } else {
-                TextField(title, text: text)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-            }
-
-            if let accessory {
-                accessory
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color(.systemGray3), lineWidth: 1)
-        )
-    }
-
-    private var passwordEyeButton: some View {
-        Button(action: { isPasswordVisible.toggle() }) {
-            Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
-                .foregroundColor(Color(.secondaryLabel))
-        }
-    }
-
-    private var confirmPasswordEyeButton: some View {
-        Button(action: { isConfirmPasswordVisible.toggle() }) {
-            Image(systemName: isConfirmPasswordVisible ? "eye.slash" : "eye")
-                .foregroundColor(Color(.secondaryLabel))
-        }
     }
 
     private var genderPicker: some View {

@@ -7,16 +7,32 @@ import { useAuth } from "@/lib/auth/auth-provider";
 import { clearActiveProgram } from "@/lib/storage";
 import { fetchMembershipDetails, leaveProgram, type MembershipDetail } from "@/lib/api/programs";
 import { fetchProgramWorkouts } from "@/lib/api/program-workouts";
-import { formatDateRange } from "@/lib/format";
-import { useActiveProgram } from "@/lib/use-active-program";
+import { formatDateRange, initials } from "@/lib/format";
+import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { PageShell } from "@/components/ui/PageShell";
+import { GlassCard } from "@/components/ui/GlassCard";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { StatusBadge, programStatusVariant } from "@/components/ui/StatusBadge";
+import {
+  IconInfo,
+  IconUsers,
+  IconKey,
+  IconDumbbell,
+  IconUser,
+  IconMail,
+  IconSettings,
+  IconLock,
+  IconPalette,
+  IconDocument,
+  IconLogout
+} from "@/components/icons";
 
 export default function ProgramPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { session, isBootstrapping, signOut } = useAuth();
-  const token = session?.token ?? "";
-  const program = useActiveProgram();
-  const programId = program?.id ?? "";
+  const { session, program, token, programId } = useAuthGuard();
+  const { signOut } = useAuth();
 
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const isProgramAdmin = program?.my_role === "admin" || isGlobalAdmin;
@@ -25,18 +41,6 @@ export default function ProgramPage() {
   const canLeaveProgram = !isGlobalAdmin;
 
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
-  useEffect(() => {
-    if (!program?.id) {
-      router.push("/programs");
-    }
-  }, [program?.id, router]);
 
   const membershipQuery = useQuery({
     queryKey: ["program", "membership-details", programId],
@@ -59,14 +63,9 @@ export default function ProgramPage() {
     }
   });
 
-  const initials = useMemo(() => {
+  const userInitials = useMemo(() => {
     const name = session?.user.memberName ?? session?.user.username ?? "U";
-    return name
-      .split(" ")
-      .filter(Boolean)
-      .map((part) => part[0]?.toUpperCase())
-      .slice(0, 2)
-      .join("");
+    return initials(name);
   }, [session?.user.memberName, session?.user.username]);
 
   const membershipDetails = (membershipQuery.data ?? []).filter((member) => member.is_active);
@@ -86,23 +85,19 @@ export default function ProgramPage() {
   const errorMessage = leaveMutation.isError ? (leaveMutation.error as Error).message : null;
 
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
-      <div className="mx-auto w-full max-w-5xl space-y-6">
+    <>
+      <PageShell>
         <header className="flex items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-rf-text">Program</h1>
             <p className="mt-1 text-sm font-semibold text-rf-text-muted">{program?.name ?? "Program"}</p>
           </div>
           <div className="ml-auto flex h-12 w-12 items-center justify-center rounded-full bg-rf-accent text-base font-bold text-black">
-            {initials || "RF"}
+            {userInitials || "RF"}
           </div>
         </header>
 
-        {errorMessage && (
-          <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-rf-danger">
-            {errorMessage}
-          </div>
-        )}
+        {errorMessage && <ErrorState message={errorMessage} />}
 
         {isProgramAdmin ? (
           <div className="space-y-5">
@@ -267,7 +262,7 @@ export default function ProgramPage() {
           </div>
         ) : (
           <div className="space-y-5">
-            <div className="glass-card rounded-3xl p-6">
+            <GlassCard padding="lg">
               <div className="flex items-center gap-2 text-sm font-semibold text-rf-text">
                 <span className="text-blue-600">
                   <IconInfo className="h-4 w-4" />
@@ -280,7 +275,11 @@ export default function ProgramPage() {
                 <Divider />
                 <InfoRow
                   label="Status"
-                  value={<StatusPill status={program?.status ?? "active"} />}
+                  value={
+                    <StatusBadge variant={programStatusVariant(program?.status ?? "active")}>
+                      {(program?.status ?? "active").toLowerCase()}
+                    </StatusBadge>
+                  }
                   alignEnd
                 />
                 <Divider />
@@ -313,7 +312,7 @@ export default function ProgramPage() {
                   alignEnd
                 />
               </div>
-            </div>
+            </GlassCard>
 
             <button
               type="button"
@@ -350,29 +349,30 @@ export default function ProgramPage() {
             <MyAccountSection onSignOut={signOut} />
           </div>
         )}
-      </div>
+      </PageShell>
 
-      <ConfirmModal
+      <ConfirmDialog
         open={showLeaveConfirm}
         title="Leave Program?"
         description={`You will no longer have access to ${program?.name ?? "this program"}. Your data will be preserved and restored if you rejoin. If you're the last member, the program will be deleted automatically.`}
         confirmLabel={leaveMutation.isPending ? "Leaving..." : "Leave"}
+        danger
         onConfirm={() => leaveMutation.mutate()}
         onClose={() => setShowLeaveConfirm(false)}
       />
-    </div>
+    </>
   );
 }
 
 function SectionCard({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="glass-card rounded-3xl p-6">
+    <GlassCard padding="lg">
       <div className="flex items-center gap-2 text-sm font-semibold text-rf-text">
         <span className="text-rf-text">{icon}</span>
         {title}
       </div>
       <div className="mt-4">{children}</div>
-    </div>
+    </GlassCard>
   );
 }
 
@@ -431,21 +431,6 @@ function Divider() {
   return <div className="subtle-divider" />;
 }
 
-function StatusPill({ status }: { status: string }) {
-  const normalized = status?.toLowerCase() ?? "active";
-  const styles = {
-    active: "bg-amber-500 text-black",
-    planned: "bg-blue-500 text-white",
-    completed: "bg-emerald-500 text-white"
-  } as Record<string, string>;
-  const className = styles[normalized] ?? styles.active;
-  return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${className}`}>
-      {normalized}
-    </span>
-  );
-}
-
 function computeProgramProgress(startDate: string | null, endDate: string | null) {
   if (!startDate || !endDate) {
     return { totalDays: 0, elapsedDays: 0, remainingDays: 0, percent: 0 };
@@ -465,186 +450,6 @@ function computeProgramProgress(startDate: string | null, endDate: string | null
   const remainingDays = Math.max(totalDays - elapsedDays, 0);
   const percent = totalDays > 0 ? Math.round((elapsedDays / totalDays) * 100) : 0;
   return { totalDays, elapsedDays, remainingDays, percent };
-}
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0]?.toUpperCase())
-    .slice(0, 2)
-    .join("");
-}
-
-function ConfirmModal({
-  open,
-  title,
-  description,
-  confirmLabel,
-  onConfirm,
-  onClose
-}: {
-  open: boolean;
-  title: string;
-  description: string;
-  confirmLabel: string;
-  onConfirm: () => void;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    if (!open) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    body.classList.add("modal-open");
-    return () => {
-      body.style.overflow = previousOverflow;
-      body.classList.remove("modal-open");
-    };
-  }, [open]);
-
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="modal-surface relative z-10 w-full max-w-md rounded-3xl p-6">
-        <h3 className="text-lg font-semibold text-rf-text">{title}</h3>
-        <p className="mt-2 text-sm text-rf-text-muted">{description}</p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="pill-button rounded-2xl px-4 py-3 text-sm font-semibold"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-            className="danger-pill rounded-2xl px-4 py-3 text-sm font-semibold"
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function IconInfo({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="10" cy="10" r="8" />
-      <line x1="10" y1="9" x2="10" y2="14" strokeLinecap="round" />
-      <circle cx="10" cy="6" r="1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function IconUsers({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="6.5" cy="7" r="3" />
-      <circle cx="14.5" cy="8" r="2.5" />
-      <path d="M2.5 17c0-2.6 2.3-4.6 5.1-4.6S12.7 14.4 12.7 17" strokeLinecap="round" />
-      <path d="M11.8 16.5c.3-1.8 1.9-3.1 3.8-3.1 1.8 0 3.4 1.3 3.7 3.1" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconKey({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="7" cy="9" r="3.5" />
-      <path d="M10 9h7M14 9v3M16 9v2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconDumbbell({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="2" y="7" width="3" height="6" rx="1" />
-      <rect x="15" y="7" width="3" height="6" rx="1" />
-      <rect x="5.5" y="8" width="3" height="4" rx="1" />
-      <rect x="11.5" y="8" width="3" height="4" rx="1" />
-      <path d="M8.5 10h3" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconUser({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="10" cy="7" r="3.2" />
-      <path d="M4 17c0-3 2.7-5.2 6-5.2s6 2.2 6 5.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconMail({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3" y="5" width="14" height="10" rx="2" />
-      <path d="M4 6l6 4 6-4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IconSettings({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path
-        d="M10 3.5l1 1.7 2-.2.9 1.8-1.4 1.3.4 2-1.8 1-1 1.7-2-.3-1.7 1-1.6-1.3.3-2-1.3-1.5 1-1.8 2 .2 1-1.7z"
-        strokeLinejoin="round"
-      />
-      <circle cx="10" cy="10" r="2.2" />
-    </svg>
-  );
-}
-
-function IconLock({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="4" y="9" width="12" height="8" rx="2" />
-      <path d="M7 9V7a3 3 0 0 1 6 0v2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconPalette({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M10 3.5a6.5 6.5 0 1 0 0 13h1.2c1 0 1.8-.8 1.8-1.8v-.5c0-.7.6-1.3 1.3-1.3h1.3A3.4 3.4 0 0 0 18 9.6 6.5 6.5 0 0 0 10 3.5z" />
-      <circle cx="7" cy="8" r="0.8" fill="currentColor" stroke="none" />
-      <circle cx="10.5" cy="6.8" r="0.8" fill="currentColor" stroke="none" />
-      <circle cx="6.5" cy="11" r="0.8" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-function IconDocument({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M6 3h6l4 4v10a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 17V4.5A1.5 1.5 0 0 1 6 3z" />
-      <path d="M12 3v4h4" />
-      <path d="M7 11h6M7 14h6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function IconLogout({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M4 4h6a2 2 0 0 1 2 2v2" strokeLinecap="round" />
-      <path d="M10 16H6a2 2 0 0 1-2-2V6" strokeLinecap="round" />
-      <path d="M11 10h7" strokeLinecap="round" />
-      <path d="M15 7l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 function MyAccountSection({ onSignOut }: { onSignOut: () => Promise<void> }) {

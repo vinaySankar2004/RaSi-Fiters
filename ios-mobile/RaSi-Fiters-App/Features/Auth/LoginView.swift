@@ -10,7 +10,8 @@ struct LoginView: View {
     @State private var alertMessage: String?
     @State private var isShowingAlert: Bool = false
     @State private var navigateToProgramPicker: Bool = false
-    private let privacyPolicyURL = URL(string: "https://vinaysankar2004.github.io/RaSi-Fiters/")!
+    // swiftlint:disable:next force_unwrapping
+    private static let privacyPolicyURL = URL(string: "https://vinaysankar2004.github.io/RaSi-Fiters/")!
 
     var body: some View {
         ZStack {
@@ -40,18 +41,16 @@ struct LoginView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
 
                 VStack(spacing: 16) {
-                    inputField(
+                    AppInputField(
                         title: "Username or Email",
-                        text: $identifier,
-                        isSecure: false,
-                        accessory: nil
+                        text: $identifier
                     )
 
-                    inputField(
+                    AppInputField(
                         title: "Password",
                         text: $password,
                         isSecure: !isPasswordVisible,
-                        accessory: AnyView(passwordEyeButton)
+                        accessory: AnyView(AppPasswordToggleButton(isVisible: $isPasswordVisible))
                     )
                 }
 
@@ -100,7 +99,7 @@ struct LoginView: View {
                         .foregroundColor(Color(.secondaryLabel))
                         .frame(maxWidth: .infinity, alignment: .center)
 
-                    Link("Privacy Policy", destination: privacyPolicyURL)
+                    Link("Privacy Policy", destination: Self.privacyPolicyURL)
                         .font(.footnote.weight(.semibold))
                         .foregroundColor(.appOrange)
                 }
@@ -144,42 +143,6 @@ struct LoginView: View {
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(.top, 10)
         .padding(.bottom, 6)
-    }
-
-    private func inputField(
-        title: String,
-        text: Binding<String>,
-        isSecure: Bool,
-        accessory: AnyView?
-    ) -> some View {
-        HStack {
-            if isSecure {
-                SecureField(title, text: text)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-            } else {
-                TextField(title, text: text)
-                    .textInputAutocapitalization(.never)
-                    .disableAutocorrection(true)
-            }
-
-            if let accessory {
-                accessory
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color(.systemGray3), lineWidth: 1)
-        )
-    }
-
-    private var passwordEyeButton: some View {
-        Button(action: { isPasswordVisible.toggle() }) {
-            Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
-                .foregroundColor(Color(.secondaryLabel))
-        }
     }
 
     private func handleLogin() async {
