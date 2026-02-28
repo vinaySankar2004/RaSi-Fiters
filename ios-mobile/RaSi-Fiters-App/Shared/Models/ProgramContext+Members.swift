@@ -205,7 +205,11 @@ extension ProgramContext {
         startDate: String? = nil,
         endDate: String? = nil,
         sortBy: String? = nil,
-        sortDir: String? = nil
+        sortDir: String? = nil,
+        minSleepHours: Double? = nil,
+        maxSleepHours: Double? = nil,
+        minFoodQuality: Int? = nil,
+        maxFoodQuality: Int? = nil
     ) async {
         guard let token = authToken, !token.isEmpty else { return }
         guard let pid = programId else {
@@ -221,7 +225,11 @@ extension ProgramContext {
                 startDate: startDate,
                 endDate: endDate,
                 sortBy: sortBy,
-                sortDir: sortDir
+                sortDir: sortDir,
+                minSleepHours: minSleepHours,
+                maxSleepHours: maxSleepHours,
+                minFoodQuality: minFoodQuality,
+                maxFoodQuality: maxFoodQuality
             )
             memberHealthLogs = resp.items
         } catch {

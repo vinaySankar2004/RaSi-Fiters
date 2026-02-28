@@ -263,7 +263,8 @@ async function addDailyHealthLog({ program_id, log_date, sleep_hours, food_quali
 
 async function getDailyHealthLogs({
     programId, memberId, limit = 1000,
-    startDate, endDate, sortBy = "date", sortDir = "desc"
+    startDate, endDate, sortBy = "date", sortDir = "desc",
+    minSleepHours, maxSleepHours, minFoodQuality, maxFoodQuality
 }, requester) {
     if (!programId || !memberId) throw new AppError(400, "programId and memberId are required.");
 
@@ -282,6 +283,36 @@ async function getDailyHealthLogs({
         whereClause.log_date = {};
         if (startDate) whereClause.log_date[Op.gte] = startDate;
         if (endDate) whereClause.log_date[Op.lte] = endDate;
+    }
+
+    const sleepNum = (v) => {
+        if (v === undefined || v === null || v === "") return undefined;
+        const n = Number(v);
+        return Number.isFinite(n) ? n : undefined;
+    };
+    const minS = sleepNum(minSleepHours);
+    const maxS = sleepNum(maxSleepHours);
+    if (minS !== undefined || maxS !== undefined) {
+        const sleepCond = [{ sleep_hours: { [Op.ne]: null } }];
+        if (minS !== undefined) sleepCond.push({ sleep_hours: { [Op.gte]: minS } });
+        if (maxS !== undefined) sleepCond.push({ sleep_hours: { [Op.lte]: maxS } });
+        whereClause[Op.and] = whereClause[Op.and] || [];
+        whereClause[Op.and].push({ [Op.and]: sleepCond });
+    }
+
+    const dietInt = (v) => {
+        if (v === undefined || v === null || v === "") return undefined;
+        const n = parseInt(v, 10);
+        return Number.isFinite(n) && n >= 1 && n <= 5 ? n : undefined;
+    };
+    const minF = dietInt(minFoodQuality);
+    const maxF = dietInt(maxFoodQuality);
+    if (minF !== undefined || maxF !== undefined) {
+        const dietCond = [{ food_quality: { [Op.ne]: null } }];
+        if (minF !== undefined) dietCond.push({ food_quality: { [Op.gte]: minF } });
+        if (maxF !== undefined) dietCond.push({ food_quality: { [Op.lte]: maxF } });
+        whereClause[Op.and] = whereClause[Op.and] || [];
+        whereClause[Op.and].push({ [Op.and]: dietCond });
     }
 
     let orderColumn;
@@ -316,7 +347,11 @@ async function getDailyHealthLogs({
             startDate: startDate || null,
             endDate: endDate || null,
             sortBy,
-            sortDir: orderDirection.toLowerCase()
+            sortDir: orderDirection.toLowerCase(),
+            minSleepHours: minS ?? null,
+            maxSleepHours: maxS ?? null,
+            minFoodQuality: minF ?? null,
+            maxFoodQuality: maxF ?? null
         }
     };
 }

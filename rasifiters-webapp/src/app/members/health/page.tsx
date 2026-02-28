@@ -34,6 +34,16 @@ const DIET_OPTIONS = ["", "1", "2", "3", "4", "5"].map((value) => ({
   label: value ? `${value}` : "Not set"
 }));
 
+const DIET_FILTER_OPTIONS = [{ value: "", label: "Any" }, ...["1", "2", "3", "4", "5"].map((v) => ({ value: v, label: v }))];
+
+function formatSleepHoursForFilter(hours: number): string {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  if (h === 0) return `${m}m sleep`;
+  if (m === 0) return `${h}h sleep`;
+  return `${h}h ${m}m sleep`;
+}
+
 export default function MemberHealthPage() {
   const router = useRouter();
   const params = useClientSearchParams();
@@ -52,6 +62,12 @@ export default function MemberHealthPage() {
   const [sortDir, setSortDir] = useState("desc");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [minSleepHours, setMinSleepHours] = useState("");
+  const [minSleepMinutes, setMinSleepMinutes] = useState("");
+  const [maxSleepHours, setMaxSleepHours] = useState("");
+  const [maxSleepMinutes, setMaxSleepMinutes] = useState("");
+  const [minDiet, setMinDiet] = useState("");
+  const [maxDiet, setMaxDiet] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [editTarget, setEditTarget] = useState<MemberHealthItem | null>(null);
   const [editSleepHours, setEditSleepHours] = useState("");
@@ -66,15 +82,51 @@ export default function MemberHealthPage() {
     }
   }, [memberId, canViewAny, loggedInUserId, router]);
 
+  const minSleepHoursNum = useMemo(() => {
+    const total = (Number(minSleepHours) || 0) + (Number(minSleepMinutes) || 0) / 60;
+    const hasInput = minSleepHours.trim() !== "" || minSleepMinutes.trim() !== "";
+    return hasInput && total > 0 ? total : undefined;
+  }, [minSleepHours, minSleepMinutes]);
+  const maxSleepHoursNum = useMemo(() => {
+    const total = (Number(maxSleepHours) || 0) + (Number(maxSleepMinutes) || 0) / 60;
+    const hasInput = maxSleepHours.trim() !== "" || maxSleepMinutes.trim() !== "";
+    return hasInput && total > 0 ? total : undefined;
+  }, [maxSleepHours, maxSleepMinutes]);
+  const minDietNum = useMemo(() => {
+    const n = parseInt(minDiet, 10);
+    return minDiet.trim() !== "" && !Number.isNaN(n) && n >= 1 && n <= 5 ? n : undefined;
+  }, [minDiet]);
+  const maxDietNum = useMemo(() => {
+    const n = parseInt(maxDiet, 10);
+    return maxDiet.trim() !== "" && !Number.isNaN(n) && n >= 1 && n <= 5 ? n : undefined;
+  }, [maxDiet]);
+
   const healthQuery = useQuery({
-    queryKey: ["members", "health", programId, memberId, sortField, sortDir, startDate, endDate],
+    queryKey: [
+      "members",
+      "health",
+      programId,
+      memberId,
+      sortField,
+      sortDir,
+      startDate,
+      endDate,
+      minSleepHoursNum,
+      maxSleepHoursNum,
+      minDietNum,
+      maxDietNum
+    ],
     queryFn: () =>
       fetchMemberHealthLogs(token, programId, memberId, {
         limit: 0,
         sortBy: sortField,
         sortDir,
         startDate: startDate || undefined,
-        endDate: endDate || undefined
+        endDate: endDate || undefined,
+        minSleepHours: minSleepHoursNum,
+        maxSleepHours: maxSleepHoursNum,
+        minFoodQuality: minDietNum,
+        maxFoodQuality: maxDietNum
       }),
     enabled: !!token && !!programId && !!memberId
   });
@@ -111,10 +163,27 @@ export default function MemberHealthPage() {
     }
   });
 
+  const hasActiveFilters =
+    startDate ||
+    endDate ||
+    minSleepHours.trim() ||
+    minSleepMinutes.trim() ||
+    maxSleepHours.trim() ||
+    maxSleepMinutes.trim() ||
+    minDiet.trim() ||
+    maxDiet.trim();
   const formattedFilters = useMemo(() => {
-    if (!startDate && !endDate) return null;
-    return `${startDate || "Start"} – ${endDate || "End"}`;
-  }, [startDate, endDate]);
+    const parts: string[] = [];
+    if (startDate || endDate) parts.push(`${startDate || "Start"} – ${endDate || "End"}`);
+    if (minSleepHoursNum !== undefined) parts.push(`At least ${formatSleepHoursForFilter(minSleepHoursNum)}`);
+    if (maxSleepHoursNum !== undefined) parts.push(`At most ${formatSleepHoursForFilter(maxSleepHoursNum)}`);
+    if (minDietNum !== undefined || maxDietNum !== undefined) {
+      if (minDietNum !== undefined && maxDietNum !== undefined) parts.push(`Diet ${minDietNum}–${maxDietNum}`);
+      else if (minDietNum !== undefined) parts.push(`Diet ≥ ${minDietNum}`);
+      else parts.push(`Diet ≤ ${maxDietNum}`);
+    }
+    return parts.length === 0 ? null : parts.join(" · ");
+  }, [startDate, endDate, minSleepHoursNum, maxSleepHoursNum, minDietNum, maxDietNum]);
 
   const parseSleepInput = (hoursText: string, minutesText: string) => {
     const trimmedHours = hoursText.trim();
@@ -200,7 +269,7 @@ export default function MemberHealthPage() {
           <button
             type="button"
             onClick={() => setShowFilter(true)}
-            className="mt-2 rounded-2xl bg-rf-surface-muted px-4 py-3 text-sm font-semibold text-rf-text-muted"
+            className={`mt-2 rounded-2xl px-4 py-3 text-sm font-semibold ${hasActiveFilters ? "bg-rf-accent/20 text-rf-accent" : "bg-rf-surface-muted text-rf-text-muted"}`}
           >
             Filter
           </button>
@@ -291,15 +360,89 @@ export default function MemberHealthPage() {
                 className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
               />
             </div>
+            <div>
+              <label className="text-sm font-semibold text-rf-text">Min sleep</label>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={24}
+                  value={minSleepHours}
+                  onChange={(e) => setMinSleepHours(e.target.value)}
+                  className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                  placeholder="0"
+                />
+                <span className="text-sm text-rf-text-muted">hr</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={minSleepMinutes}
+                  onChange={(e) => setMinSleepMinutes(e.target.value)}
+                  className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                  placeholder="0"
+                />
+                <span className="text-sm text-rf-text-muted">min</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-rf-text">Max sleep</label>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={24}
+                  value={maxSleepHours}
+                  onChange={(e) => setMaxSleepHours(e.target.value)}
+                  className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                  placeholder="0"
+                />
+                <span className="text-sm text-rf-text-muted">hr</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  value={maxSleepMinutes}
+                  onChange={(e) => setMaxSleepMinutes(e.target.value)}
+                  className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                  placeholder="0"
+                />
+                <span className="text-sm text-rf-text-muted">min</span>
+              </div>
+            </div>
+            <div>
+              <Select
+                label="Min diet (1–5)"
+                value={minDiet}
+                options={DIET_FILTER_OPTIONS}
+                onChange={setMinDiet}
+                placeholder="Any"
+              />
+            </div>
+            <div>
+              <Select
+                label="Max diet (1–5)"
+                value={maxDiet}
+                options={DIET_FILTER_OPTIONS}
+                onChange={setMaxDiet}
+                placeholder="Any"
+              />
+            </div>
             <button
               type="button"
               onClick={() => {
                 setStartDate("");
                 setEndDate("");
+                setMinSleepHours("");
+                setMinSleepMinutes("");
+                setMaxSleepHours("");
+                setMaxSleepMinutes("");
+                setMinDiet("");
+                setMaxDiet("");
               }}
               className="rounded-full bg-rf-surface-muted px-3 py-1 text-xs font-semibold text-rf-text-muted"
             >
-              Clear dates
+              Clear all filters
             </button>
           </div>
         </div>

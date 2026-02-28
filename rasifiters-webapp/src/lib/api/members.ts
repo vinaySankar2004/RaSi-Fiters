@@ -169,7 +169,17 @@ export async function fetchMemberHealthLogs(
   token: string,
   programId: string,
   memberId: string,
-  params: { limit?: number; startDate?: string; endDate?: string; sortBy?: string; sortDir?: string } = {}
+  params: {
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortDir?: string;
+    minSleepHours?: number;
+    maxSleepHours?: number;
+    minFoodQuality?: number;
+    maxFoodQuality?: number;
+  } = {}
 ) {
   const query = new URLSearchParams({
     programId,
@@ -180,6 +190,14 @@ export async function fetchMemberHealthLogs(
   if (params.endDate) query.set("endDate", params.endDate);
   if (params.sortBy) query.set("sortBy", params.sortBy);
   if (params.sortDir) query.set("sortDir", params.sortDir);
+  if (params.minSleepHours !== undefined && params.minSleepHours !== null)
+    query.set("minSleepHours", String(params.minSleepHours));
+  if (params.maxSleepHours !== undefined && params.maxSleepHours !== null)
+    query.set("maxSleepHours", String(params.maxSleepHours));
+  if (params.minFoodQuality !== undefined && params.minFoodQuality !== null)
+    query.set("minFoodQuality", String(params.minFoodQuality));
+  if (params.maxFoodQuality !== undefined && params.maxFoodQuality !== null)
+    query.set("maxFoodQuality", String(params.maxFoodQuality));
   return apiRequest<MemberHealthResponse>(`/daily-health-logs?${query.toString()}`, { token });
 }
 

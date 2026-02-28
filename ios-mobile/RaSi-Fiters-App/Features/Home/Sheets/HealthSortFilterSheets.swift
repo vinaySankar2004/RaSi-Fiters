@@ -43,9 +43,13 @@ enum HealthSortDirection: String, CaseIterable {
 struct HealthFilters: Equatable {
     var startDate: Date?
     var endDate: Date?
+    var minSleepHours: Double?
+    var maxSleepHours: Double?
+    var minFoodQuality: Int?
+    var maxFoodQuality: Int?
 
     var isActive: Bool {
-        startDate != nil || endDate != nil
+        startDate != nil || endDate != nil || minSleepHours != nil || maxSleepHours != nil || minFoodQuality != nil || maxFoodQuality != nil
     }
 
     func startDateString() -> String? {
@@ -189,6 +193,39 @@ struct MemberHealthDetail: View {
                         Text(formatDate(end))
                             .font(.caption.weight(.medium))
                     }
+                    if let minS = filters.minSleepHours {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                        Text("Sleep ≥\(formatSleepHours(minS))")
+                            .font(.caption.weight(.medium))
+                    }
+                    if let maxS = filters.maxSleepHours {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                        Text("Sleep ≤\(formatSleepHours(maxS))")
+                            .font(.caption.weight(.medium))
+                    }
+                    if let minF = filters.minFoodQuality, let maxF = filters.maxFoodQuality {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                        Text("Diet \(minF)–\(maxF)")
+                            .font(.caption.weight(.medium))
+                    } else if let minF = filters.minFoodQuality {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                        Text("Diet ≥\(minF)")
+                            .font(.caption.weight(.medium))
+                    } else if let maxF = filters.maxFoodQuality {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                        Text("Diet ≤\(maxF)")
+                            .font(.caption.weight(.medium))
+                    }
                     Spacer()
                     Button {
                         filters = HealthFilters()
@@ -204,6 +241,14 @@ struct MemberHealthDetail: View {
                 .cornerRadius(8)
             }
         }
+    }
+
+    private func formatSleepHours(_ hours: Double) -> String {
+        let h = Int(hours)
+        let m = Int((hours - Double(h)) * 60)
+        if h == 0 { return "\(m)m" }
+        if m == 0 { return "\(h)h" }
+        return "\(h)h \(m)m"
     }
 
     private var contentList: some View {
@@ -314,7 +359,11 @@ struct MemberHealthDetail: View {
             startDate: filters.startDateString(),
             endDate: filters.endDateString(),
             sortBy: sortField.apiValue,
-            sortDir: sortDirection.apiValue
+            sortDir: sortDirection.apiValue,
+            minSleepHours: filters.minSleepHours,
+            maxSleepHours: filters.maxSleepHours,
+            minFoodQuality: filters.minFoodQuality,
+            maxFoodQuality: filters.maxFoodQuality
         )
         isLoading = false
     }
@@ -431,6 +480,14 @@ struct HealthFilterSheet: View {
     @State private var localEndDate: Date = Date()
     @State private var useStartDate: Bool = false
     @State private var useEndDate: Bool = false
+    @State private var localMinSleepHours: String = ""
+    @State private var localMinSleepMinutes: String = ""
+    @State private var localMaxSleepHours: String = ""
+    @State private var localMaxSleepMinutes: String = ""
+    @State private var localMinDiet: Int = 0  // 0 = Any
+    @State private var localMaxDiet: Int = 0
+
+    private let dietOptions = [0, 1, 2, 3, 4, 5]
 
     var body: some View {
         NavigationView {
@@ -447,12 +504,72 @@ struct HealthFilterSheet: View {
                     }
                 }
 
+                Section("Sleep") {
+                    HStack {
+                        Text("Min sleep")
+                            .frame(width: 100, alignment: .leading)
+                        TextField("0", text: $localMinSleepHours)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 50)
+                        Text("hr")
+                            .font(.subheadline)
+                            .foregroundColor(Color(.secondaryLabel))
+                        TextField("0", text: $localMinSleepMinutes)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 50)
+                        Text("min")
+                            .font(.subheadline)
+                            .foregroundColor(Color(.secondaryLabel))
+                    }
+                    HStack {
+                        Text("Max sleep")
+                            .frame(width: 100, alignment: .leading)
+                        TextField("0", text: $localMaxSleepHours)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 50)
+                        Text("hr")
+                            .font(.subheadline)
+                            .foregroundColor(Color(.secondaryLabel))
+                        TextField("0", text: $localMaxSleepMinutes)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 50)
+                        Text("min")
+                            .font(.subheadline)
+                            .foregroundColor(Color(.secondaryLabel))
+                    }
+                }
+
+                Section("Diet (1–5)") {
+                    Picker("Min diet", selection: $localMinDiet) {
+                        Text("Any").tag(0)
+                        ForEach(1...5, id: \.self) { n in
+                            Text("\(n)").tag(n)
+                        }
+                    }
+                    Picker("Max diet", selection: $localMaxDiet) {
+                        Text("Any").tag(0)
+                        ForEach(1...5, id: \.self) { n in
+                            Text("\(n)").tag(n)
+                        }
+                    }
+                }
+
                 if filters.isActive {
                     Section {
                         Button("Clear All Filters", role: .destructive) {
                             filters = HealthFilters()
                             useStartDate = false
                             useEndDate = false
+                            localMinSleepHours = ""
+                            localMinSleepMinutes = ""
+                            localMaxSleepHours = ""
+                            localMaxSleepMinutes = ""
+                            localMinDiet = 0
+                            localMaxDiet = 0
                         }
                     }
                 }
@@ -482,6 +599,16 @@ struct HealthFilterSheet: View {
                     localEndDate = end
                     useEndDate = true
                 }
+                if let minS = filters.minSleepHours {
+                    localMinSleepHours = "\(Int(minS))"
+                    localMinSleepMinutes = "\(Int((minS - floor(minS)) * 60))"
+                }
+                if let maxS = filters.maxSleepHours {
+                    localMaxSleepHours = "\(Int(maxS))"
+                    localMaxSleepMinutes = "\(Int((maxS - floor(maxS)) * 60))"
+                }
+                localMinDiet = filters.minFoodQuality ?? 0
+                localMaxDiet = filters.maxFoodQuality ?? 0
             }
         }
     }
@@ -489,6 +616,12 @@ struct HealthFilterSheet: View {
     private func applyFilters() {
         filters.startDate = useStartDate ? localStartDate : nil
         filters.endDate = useEndDate ? localEndDate : nil
+        let minSleepTotal = (Double(localMinSleepHours) ?? 0) + (Double(localMinSleepMinutes) ?? 0) / 60
+        let maxSleepTotal = (Double(localMaxSleepHours) ?? 0) + (Double(localMaxSleepMinutes) ?? 0) / 60
+        filters.minSleepHours = minSleepTotal > 0 ? minSleepTotal : nil
+        filters.maxSleepHours = maxSleepTotal > 0 ? maxSleepTotal : nil
+        filters.minFoodQuality = localMinDiet >= 1 && localMinDiet <= 5 ? localMinDiet : nil
+        filters.maxFoodQuality = localMaxDiet >= 1 && localMaxDiet <= 5 ? localMaxDiet : nil
     }
 }
 

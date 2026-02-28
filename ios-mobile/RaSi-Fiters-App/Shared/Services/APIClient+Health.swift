@@ -58,7 +58,11 @@ extension APIClient {
         startDate: String? = nil,
         endDate: String? = nil,
         sortBy: String? = nil,
-        sortDir: String? = nil
+        sortDir: String? = nil,
+        minSleepHours: Double? = nil,
+        maxSleepHours: Double? = nil,
+        minFoodQuality: Int? = nil,
+        maxFoodQuality: Int? = nil
     ) async throws -> MemberHealthLogResponse {
         var components = URLComponents(url: baseURL.appendingPathComponent("daily-health-logs"), resolvingAgainstBaseURL: false)!
         var queryItems = [
@@ -70,6 +74,10 @@ extension APIClient {
         if let endDate { queryItems.append(URLQueryItem(name: "endDate", value: endDate)) }
         if let sortBy { queryItems.append(URLQueryItem(name: "sortBy", value: sortBy)) }
         if let sortDir { queryItems.append(URLQueryItem(name: "sortDir", value: sortDir)) }
+        if let minSleepHours { queryItems.append(URLQueryItem(name: "minSleepHours", value: "\(minSleepHours)")) }
+        if let maxSleepHours { queryItems.append(URLQueryItem(name: "maxSleepHours", value: "\(maxSleepHours)")) }
+        if let minFoodQuality { queryItems.append(URLQueryItem(name: "minFoodQuality", value: "\(minFoodQuality)")) }
+        if let maxFoodQuality { queryItems.append(URLQueryItem(name: "maxFoodQuality", value: "\(maxFoodQuality)")) }
         components.queryItems = queryItems
         guard let url = components.url else { throw APIError(message: "Invalid daily health logs URL") }
         var request = URLRequest(url: url)
