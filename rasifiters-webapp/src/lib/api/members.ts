@@ -137,7 +137,16 @@ export async function fetchMemberRecentWorkouts(
   token: string,
   programId: string,
   memberId: string,
-  params: { limit?: number; startDate?: string; endDate?: string; sortBy?: string; sortDir?: string } = {}
+  params: {
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortDir?: string;
+    workoutType?: string;
+    minDuration?: number;
+    maxDuration?: number;
+  } = {}
 ) {
   const query = new URLSearchParams({
     programId,
@@ -148,6 +157,11 @@ export async function fetchMemberRecentWorkouts(
   if (params.endDate) query.set("endDate", params.endDate);
   if (params.sortBy) query.set("sortBy", params.sortBy);
   if (params.sortDir) query.set("sortDir", params.sortDir);
+  if (params.workoutType) query.set("workoutType", params.workoutType);
+  if (params.minDuration !== undefined && params.minDuration !== null)
+    query.set("minDuration", String(params.minDuration));
+  if (params.maxDuration !== undefined && params.maxDuration !== null)
+    query.set("maxDuration", String(params.maxDuration));
   return apiRequest<MemberRecentResponse>(`/member-recent?${query.toString()}`, { token });
 }
 

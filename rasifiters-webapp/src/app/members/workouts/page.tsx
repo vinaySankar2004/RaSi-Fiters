@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
 import { fetchMemberRecentWorkouts, type MemberRecentItem } from "@/lib/api/members";
+import { fetchProgramWorkouts } from "@/lib/api/program-workouts";
 import { deleteWorkoutLog, updateWorkoutLog } from "@/lib/api/logs";
 import { escapeCsv, downloadCsv } from "@/lib/format";
 import { Select } from "@/components/Select";
@@ -55,6 +56,9 @@ export default function MemberWorkoutsPage() {
   const [sortDir, setSortDir] = useState("desc");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [workoutType, setWorkoutType] = useState("");
+  const [minDuration, setMinDuration] = useState("");
+  const [maxDuration, setMaxDuration] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [editTarget, setEditTarget] = useState<MemberRecentItem | null>(null);
   const [editHours, setEditHours] = useState("");
@@ -68,15 +72,51 @@ export default function MemberWorkoutsPage() {
     }
   }, [memberId, canViewAny, loggedInUserId, router]);
 
+  const programWorkoutsQuery = useQuery({
+    queryKey: ["program-workouts", programId],
+    queryFn: () => fetchProgramWorkouts(token, programId),
+    enabled: !!token && !!programId && !!showFilter
+  });
+
+  const workoutTypeOptions = useMemo(() => {
+    const list = programWorkoutsQuery.data ?? [];
+    const visible = list.filter((w) => !w.is_hidden).map((w) => ({ value: w.workout_name, label: w.workout_name }));
+    return [{ value: "", label: "Any" }, ...visible];
+  }, [programWorkoutsQuery.data]);
+
+  const minDurationNum = useMemo(() => {
+    const n = Number(minDuration);
+    return minDuration.trim() !== "" && !Number.isNaN(n) && n >= 0 ? n : undefined;
+  }, [minDuration]);
+  const maxDurationNum = useMemo(() => {
+    const n = Number(maxDuration);
+    return maxDuration.trim() !== "" && !Number.isNaN(n) && n >= 0 ? n : undefined;
+  }, [maxDuration]);
+
   const workoutsQuery = useQuery({
-    queryKey: ["members", "workouts", programId, memberId, sortField, sortDir, startDate, endDate],
+    queryKey: [
+      "members",
+      "workouts",
+      programId,
+      memberId,
+      sortField,
+      sortDir,
+      startDate,
+      endDate,
+      workoutType,
+      minDurationNum,
+      maxDurationNum
+    ],
     queryFn: () =>
       fetchMemberRecentWorkouts(token, programId, memberId, {
         limit: 0,
         sortBy: sortField,
         sortDir,
         startDate: startDate || undefined,
-        endDate: endDate || undefined
+        endDate: endDate || undefined,
+        workoutType: workoutType || undefined,
+        minDuration: minDurationNum,
+        maxDuration: maxDurationNum
       }),
     enabled: !!token && !!programId && !!memberId
   });
@@ -125,10 +165,15 @@ export default function MemberWorkoutsPage() {
     downloadCsv(filename, csv);
   };
 
+  const hasActiveFilters = startDate || endDate || workoutType || minDuration.trim() || maxDuration.trim();
   const formattedFilters = useMemo(() => {
-    if (!startDate && !endDate) return null;
-    return `${startDate || "Start"} – ${endDate || "End"}`;
-  }, [startDate, endDate]);
+    const parts: string[] = [];
+    if (startDate || endDate) parts.push(`${startDate || "Start"} – ${endDate || "End"}`);
+    if (workoutType) parts.push(workoutType);
+    if (minDurationNum !== undefined) parts.push(`≥ ${minDurationNum} min`);
+    if (maxDurationNum !== undefined) parts.push(`≤ ${maxDurationNum} min`);
+    return parts.length === 0 ? null : parts.join(" · ");
+  }, [startDate, endDate, workoutType, minDurationNum, maxDurationNum]);
 
   const openEdit = (item: MemberRecentItem) => {
     setEditTarget(item);
@@ -172,7 +217,7 @@ export default function MemberWorkoutsPage() {
           <button
             type="button"
             onClick={() => setShowFilter(true)}
-            className="mt-2 rounded-2xl bg-rf-surface-muted px-4 py-3 text-sm font-semibold text-rf-text-muted"
+            className={`mt-2 rounded-2xl px-4 py-3 text-sm font-semibold ${hasActiveFilters ? "bg-rf-accent/20 text-rf-accent" : "bg-rf-surface-muted text-rf-text-muted"}`}
           >
             Filter
           </button>
@@ -263,15 +308,50 @@ export default function MemberWorkoutsPage() {
                 className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
               />
             </div>
+            <div>
+              <Select
+                label="Workout type"
+                value={workoutType}
+                options={workoutTypeOptions}
+                onChange={setWorkoutType}
+                placeholder="Any"
+                searchable
+              />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-rf-text">Min duration (≥ minutes)</label>
+              <input
+                type="number"
+                min={0}
+                value={minDuration}
+                onChange={(event) => setMinDuration(event.target.value)}
+                placeholder="Any"
+                className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-rf-text">Max duration (≤ minutes)</label>
+              <input
+                type="number"
+                min={0}
+                value={maxDuration}
+                onChange={(event) => setMaxDuration(event.target.value)}
+                placeholder="Any"
+                className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
+              />
+            </div>
             <button
               type="button"
               onClick={() => {
                 setStartDate("");
                 setEndDate("");
+                setWorkoutType("");
+                setMinDuration("");
+                setMaxDuration("");
               }}
               className="rounded-full bg-rf-surface-muted px-3 py-1 text-xs font-semibold text-rf-text-muted"
             >
-              Clear dates
+              Clear all filters
             </button>
           </div>
         </div>

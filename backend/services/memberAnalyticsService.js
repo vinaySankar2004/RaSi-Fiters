@@ -338,7 +338,8 @@ async function getMemberStreaks({ programId, memberId }, user) {
 
 async function getMemberRecentWorkouts({
     programId, memberId, limit = 1000,
-    startDate, endDate, sortBy = "date", sortDir = "desc"
+    startDate, endDate, sortBy = "date", sortDir = "desc",
+    workoutType, minDuration, maxDuration
 }, user) {
     if (!programId || !memberId) throw new AppError(400, "programId and memberId are required.");
 
@@ -357,6 +358,19 @@ async function getMemberRecentWorkouts({
         if (endDate) whereClause.log_date[Op.lte] = endDate;
     }
 
+    const durationNum = (v) => {
+        if (v === undefined || v === null || v === "") return undefined;
+        const n = Number(v);
+        return Number.isNaN(n) ? undefined : n;
+    };
+    const minD = durationNum(minDuration);
+    const maxD = durationNum(maxDuration);
+    if (minD !== undefined || maxD !== undefined) {
+        whereClause.duration = {};
+        if (minD !== undefined) whereClause.duration[Op.gte] = minD;
+        if (maxD !== undefined) whereClause.duration[Op.lte] = maxD;
+    }
+
     const orderDirection = sortDir.toLowerCase() === "asc" ? "ASC" : "DESC";
     let orderSpec;
     switch (sortBy) {
@@ -365,11 +379,17 @@ async function getMemberRecentWorkouts({
         default: orderSpec = [["log_date", orderDirection]]; break;
     }
 
+    const programWorkoutInclude = {
+        model: ProgramWorkout,
+        attributes: ["workout_name"],
+        ...(workoutType && workoutType.trim() ? { where: { workout_name: workoutType.trim() } } : {})
+    };
+
     const queryOptions = {
         where: whereClause,
         order: orderSpec,
         attributes: ["log_date", "duration", "member_id", "program_workout_id"],
-        include: [{ model: ProgramWorkout, attributes: ["workout_name"] }]
+        include: [programWorkoutInclude]
     };
 
     const limitNum = Number(limit);
@@ -391,7 +411,10 @@ async function getMemberRecentWorkouts({
             startDate: startDate || null,
             endDate: endDate || null,
             sortBy,
-            sortDir: orderDirection.toLowerCase()
+            sortDir: orderDirection.toLowerCase(),
+            workoutType: workoutType && workoutType.trim() ? workoutType.trim() : null,
+            minDuration: minD ?? null,
+            maxDuration: maxD ?? null
         }
     };
 }

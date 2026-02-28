@@ -51,9 +51,12 @@ enum WorkoutSortDirection: String, CaseIterable {
 struct WorkoutFilters: Equatable {
     var startDate: Date?
     var endDate: Date?
+    var workoutTypeName: String?
+    var minDurationMinutes: Int?
+    var maxDurationMinutes: Int?
     
     var isActive: Bool {
-        startDate != nil || endDate != nil
+        startDate != nil || endDate != nil || workoutTypeName != nil || minDurationMinutes != nil || maxDurationMinutes != nil
     }
     
     func startDateString() -> String? {
@@ -124,6 +127,7 @@ struct MemberRecentDetail: View {
         }
         .sheet(isPresented: $showFilterSheet) {
             WorkoutFilterSheet(filters: $filters)
+                .environmentObject(programContext)
                 .presentationDetents([.medium])
         }
         .sheet(item: $itemToEdit) { item in
@@ -220,6 +224,28 @@ struct MemberRecentDetail: View {
                         .foregroundColor(Color(.secondaryLabel))
                     if let end = filters.endDate {
                         Text(formatDate(end))
+                            .font(.caption.weight(.medium))
+                    }
+                    if let name = filters.workoutTypeName, !name.isEmpty {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                        Text(name)
+                            .font(.caption.weight(.medium))
+                            .lineLimit(1)
+                    }
+                    if let minD = filters.minDurationMinutes {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                        Text("≥\(minD)m")
+                            .font(.caption.weight(.medium))
+                    }
+                    if let maxD = filters.maxDurationMinutes {
+                        Text("·")
+                            .font(.caption)
+                            .foregroundColor(Color(.secondaryLabel))
+                        Text("≤\(maxD)m")
                             .font(.caption.weight(.medium))
                     }
                     Spacer()
@@ -337,7 +363,10 @@ struct MemberRecentDetail: View {
             startDate: filters.startDateString(),
             endDate: filters.endDateString(),
             sortBy: sortField.apiValue,
-            sortDir: sortDirection.apiValue
+            sortDir: sortDirection.apiValue,
+            workoutType: filters.workoutTypeName,
+            minDuration: filters.minDurationMinutes,
+            maxDuration: filters.maxDurationMinutes
         )
         isLoading = false
     }
@@ -455,11 +484,24 @@ struct WorkoutSortSheet: View {
 // MARK: - Workout Filter Sheet
 struct WorkoutFilterSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var programContext: ProgramContext
     @Binding var filters: WorkoutFilters
     @State private var localStartDate: Date = Date()
     @State private var localEndDate: Date = Date()
     @State private var useStartDate: Bool = false
     @State private var useEndDate: Bool = false
+    @State private var localWorkoutTypeName: String? = nil
+    @State private var localMinDurationText: String = ""
+    @State private var localMaxDurationText: String = ""
+    @State private var showWorkoutTypePicker: Bool = false
+    
+    private var workoutTypeOptions: [SearchablePickerSheet.PickerOption] {
+        let names = programContext.programWorkouts
+            .filter { !$0.is_hidden }
+            .map { $0.workout_name }
+        return [SearchablePickerSheet.PickerOption(id: "", label: "Any")]
+            + names.map { SearchablePickerSheet.PickerOption(id: $0, label: $0) }
+    }
     
     var body: some View {
         NavigationView {
@@ -476,12 +518,45 @@ struct WorkoutFilterSheet: View {
                     }
                 }
                 
+                Section("Workout Type") {
+                    Button {
+                        showWorkoutTypePicker = true
+                    } label: {
+                        HStack {
+                            Text(localWorkoutTypeName ?? "Any")
+                                .foregroundColor(localWorkoutTypeName == nil ? Color(.tertiaryLabel) : Color(.label))
+                            Spacer()
+                            Image(systemName: "chevron.up.chevron.down")
+                                .font(.caption)
+                                .foregroundColor(Color(.tertiaryLabel))
+                        }
+                    }
+                }
+                
+                Section("Duration (minutes)") {
+                    HStack {
+                        Text("Min (≥)")
+                            .frame(width: 70, alignment: .leading)
+                        TextField("Any", text: $localMinDurationText)
+                            .keyboardType(.numberPad)
+                    }
+                    HStack {
+                        Text("Max (≤)")
+                            .frame(width: 70, alignment: .leading)
+                        TextField("Any", text: $localMaxDurationText)
+                            .keyboardType(.numberPad)
+                    }
+                }
+                
                 if filters.isActive {
                     Section {
                         Button("Clear All Filters", role: .destructive) {
                             filters = WorkoutFilters()
                             useStartDate = false
                             useEndDate = false
+                            localWorkoutTypeName = nil
+                            localMinDurationText = ""
+                            localMaxDurationText = ""
                         }
                     }
                 }
@@ -511,6 +586,25 @@ struct WorkoutFilterSheet: View {
                     localEndDate = end
                     useEndDate = true
                 }
+                localWorkoutTypeName = filters.workoutTypeName
+                if let minD = filters.minDurationMinutes { localMinDurationText = "\(minD)" }
+                if let maxD = filters.maxDurationMinutes { localMaxDurationText = "\(maxD)" }
+            }
+            .sheet(isPresented: $showWorkoutTypePicker) {
+                SearchablePickerSheet(
+                    title: "Workout Type",
+                    options: workoutTypeOptions,
+                    selectedId: localWorkoutTypeName ?? "",
+                    onSelect: { option in
+                        localWorkoutTypeName = option.id.isEmpty ? nil : option.label
+                    }
+                )
+                .presentationDetents([.medium, .large])
+            }
+            .task {
+                if programContext.programWorkouts.isEmpty, programContext.programId != nil {
+                    await programContext.loadProgramWorkouts()
+                }
             }
         }
     }
@@ -518,5 +612,10 @@ struct WorkoutFilterSheet: View {
     private func applyFilters() {
         filters.startDate = useStartDate ? localStartDate : nil
         filters.endDate = useEndDate ? localEndDate : nil
+        filters.workoutTypeName = localWorkoutTypeName
+        let minVal = Int(localMinDurationText.trimmingCharacters(in: .whitespacesAndNewlines))
+        let maxVal = Int(localMaxDurationText.trimmingCharacters(in: .whitespacesAndNewlines))
+        filters.minDurationMinutes = (minVal != nil && minVal! >= 0) ? minVal : nil
+        filters.maxDurationMinutes = (maxVal != nil && maxVal! >= 0) ? maxVal : nil
     }
 }

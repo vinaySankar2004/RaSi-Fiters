@@ -291,7 +291,10 @@ extension APIClient {
         startDate: String? = nil,
         endDate: String? = nil,
         sortBy: String? = nil,
-        sortDir: String? = nil
+        sortDir: String? = nil,
+        workoutType: String? = nil,
+        minDuration: Int? = nil,
+        maxDuration: Int? = nil
     ) async throws -> MemberRecentWorkoutsResponse {
         var components = URLComponents(url: baseURL.appendingPathComponent("member-recent"), resolvingAgainstBaseURL: false)!
         var queryItems = [
@@ -303,6 +306,9 @@ extension APIClient {
         if let endDate { queryItems.append(URLQueryItem(name: "endDate", value: endDate)) }
         if let sortBy { queryItems.append(URLQueryItem(name: "sortBy", value: sortBy)) }
         if let sortDir { queryItems.append(URLQueryItem(name: "sortDir", value: sortDir)) }
+        if let workoutType, !workoutType.isEmpty { queryItems.append(URLQueryItem(name: "workoutType", value: workoutType)) }
+        if let minDuration { queryItems.append(URLQueryItem(name: "minDuration", value: "\(minDuration)")) }
+        if let maxDuration { queryItems.append(URLQueryItem(name: "maxDuration", value: "\(maxDuration)")) }
         components.queryItems = queryItems
         guard let url = components.url else { throw APIError(message: "Invalid member recent URL") }
         var request = URLRequest(url: url)

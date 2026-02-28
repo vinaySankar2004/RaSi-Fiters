@@ -168,7 +168,10 @@ extension ProgramContext {
         startDate: String? = nil,
         endDate: String? = nil,
         sortBy: String? = nil,
-        sortDir: String? = nil
+        sortDir: String? = nil,
+        workoutType: String? = nil,
+        minDuration: Int? = nil,
+        maxDuration: Int? = nil
     ) async {
         guard let token = authToken, !token.isEmpty else { return }
         guard let pid = programId else {
@@ -184,7 +187,10 @@ extension ProgramContext {
                 startDate: startDate,
                 endDate: endDate,
                 sortBy: sortBy,
-                sortDir: sortDir
+                sortDir: sortDir,
+                workoutType: workoutType,
+                minDuration: minDuration,
+                maxDuration: maxDuration
             )
             memberRecent = resp.items
         } catch {
