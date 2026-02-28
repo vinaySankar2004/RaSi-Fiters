@@ -1,6 +1,7 @@
 [build]
   base = "rasifiters-webapp"
   command = "npm run build"
+  publish = "rasifiters-webapp/.next"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
