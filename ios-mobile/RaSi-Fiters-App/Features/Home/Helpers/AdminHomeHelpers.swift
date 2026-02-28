@@ -1525,6 +1525,7 @@ struct AddWorkoutCard: View {
             Text("Quick add a session and keep progress up to date.")
                 .font(.subheadline)
                 .foregroundColor(.black.opacity(0.65))
+                .multilineTextAlignment(.leading)
                 .padding(.bottom, 4)
 
             Spacer(minLength: 0)
@@ -1583,6 +1584,7 @@ struct AddDailyHealthCard: View {
             Text("Track sleep hours and diet quality for the day.")
                 .font(.subheadline)
                 .foregroundColor(Color.white.opacity(0.75))
+                .multilineTextAlignment(.leading)
                 .padding(.bottom, 4)
 
             Spacer(minLength: 0)
@@ -1838,10 +1840,13 @@ struct AddWorkoutDetailView: View {
     @State private var selectedMember: APIClient.MemberDTO?
     @State private var selectedWorkout: APIClient.WorkoutDTO?
     @State private var selectedDate: Date = Date()
-    @State private var durationText: String = ""
+    @State private var durationHoursText: String = ""
+    @State private var durationMinutesText: String = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var showSuccessAlert = false
+    @State private var showMemberPicker = false
+    @State private var showWorkoutPicker = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -1855,18 +1860,22 @@ struct AddWorkoutDetailView: View {
                         .font(.footnote.weight(.semibold))
                 }
                 Button(action: { Task { await save() } }) {
-                    if isSaving {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text("Save workout")
-                            .font(.headline.weight(.semibold))
+                    Group {
+                        if isSaving {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Save workout")
+                                .font(.headline.weight(.semibold))
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.appOrange)
+                    .foregroundColor(.black)
+                    .cornerRadius(14)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.appOrange)
-                .foregroundColor(.black)
-                .cornerRadius(14)
+                .buttonStyle(.plain)
                 .disabled(isSaving || !isFormValid)
             }
             .padding(20)
@@ -1878,10 +1887,40 @@ struct AddWorkoutDetailView: View {
         .alert("Workout logged", isPresented: $showSuccessAlert) {
             Button("OK") { dismiss() }
         }
+        .sheet(isPresented: $showMemberPicker) {
+            SearchablePickerSheet(
+                title: "Select Member",
+                options: programContext.members.map {
+                    SearchablePickerSheet.PickerOption(id: $0.id, label: $0.member_name)
+                },
+                selectedId: selectedMember?.id,
+                onSelect: { option in
+                    selectedMember = programContext.members.first { $0.id == option.id }
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showWorkoutPicker) {
+            SearchablePickerSheet(
+                title: "Select Workout",
+                options: workoutOptions.map {
+                    SearchablePickerSheet.PickerOption(id: $0, label: $0)
+                },
+                selectedId: selectedWorkout?.workout_name,
+                onSelect: { option in
+                    selectWorkout(named: option.label)
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
+    }
+
+    private var computedDurationMinutes: Int {
+        (Int(durationHoursText) ?? 0) * 60 + (Int(durationMinutesText) ?? 0)
     }
 
     private var isFormValid: Bool {
-        selectedMember != nil && selectedWorkout != nil && Int(durationText) != nil
+        selectedMember != nil && selectedWorkout != nil && computedDurationMinutes > 0
     }
 
     private var canSelectAnyMember: Bool {
@@ -1906,26 +1945,59 @@ struct AddWorkoutDetailView: View {
         VStack(spacing: 14) {
             memberField
 
-            pillPicker(
-                title: "Workout type",
-                placeholder: "Select workout",
-                selection: Binding(
-                    get: { selectedWorkout?.workout_name ?? "" },
-                    set: { name in selectWorkout(named: name) }
-                ),
-                options: workoutOptions
-            )
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Workout type")
+                    .font(.subheadline.weight(.semibold))
+                Button {
+                    showWorkoutPicker = true
+                } label: {
+                    HStack {
+                        Text(selectedWorkout?.workout_name ?? "Select workout")
+                            .foregroundColor(selectedWorkout == nil ? Color(.tertiaryLabel) : Color(.label))
+                        Spacer()
+                        Image(systemName: "chevron.up.chevron.down")
+                            .foregroundColor(Color(.tertiaryLabel))
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
+            }
 
             dateField
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Duration (mins)")
+                Text("Duration")
                     .font(.subheadline.weight(.semibold))
-                TextField("e.g. 45", text: $durationText)
-                    .keyboardType(.numberPad)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                HStack(spacing: 10) {
+                    HStack(spacing: 6) {
+                        TextField("0", text: $durationHoursText)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 56)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        Text("hr")
+                            .font(.subheadline)
+                            .foregroundColor(Color(.secondaryLabel))
+                    }
+                    HStack(spacing: 6) {
+                        TextField("0", text: $durationMinutesText)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.center)
+                            .frame(width: 56)
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        Text("min")
+                            .font(.subheadline)
+                            .foregroundColor(Color(.secondaryLabel))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -1967,13 +2039,8 @@ struct AddWorkoutDetailView: View {
             Text("Member")
                 .font(.subheadline.weight(.semibold))
             if canSelectAnyMember {
-                // Full access: show dropdown picker
-                Menu {
-                    ForEach(programContext.members, id: \.id) { member in
-                        Button(member.member_name) {
-                            selectedMember = member
-                        }
-                    }
+                Button {
+                    showMemberPicker = true
                 } label: {
                     HStack {
                         Text(selectedMember?.member_name ?? "Select member")
@@ -1987,8 +2054,8 @@ struct AddWorkoutDetailView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
                 }
+                .buttonStyle(.plain)
             } else {
-                // Restricted: show disabled picker with user's name
                 HStack {
                     Text(selectedMember?.member_name ?? programContext.loggedInUserName ?? "You")
                         .foregroundColor(Color(.secondaryLabel))
@@ -2005,35 +2072,12 @@ struct AddWorkoutDetailView: View {
         }
     }
 
-    private func pillPicker(title: String, placeholder: String, selection: Binding<String>, options: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.subheadline.weight(.semibold))
-            Menu {
-                ForEach(options, id: \.self) { option in
-                    Button(option) { selection.wrappedValue = option }
-                }
-            } label: {
-                HStack {
-                    Text(selection.wrappedValue.isEmpty ? placeholder : selection.wrappedValue)
-                        .foregroundColor(selection.wrappedValue.isEmpty ? Color(.tertiaryLabel) : Color(.label))
-                    Spacer()
-                    Image(systemName: "chevron.up.chevron.down")
-                        .foregroundColor(Color(.tertiaryLabel))
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-            }
-        }
-    }
-
     private func save() async {
+        let duration = computedDurationMinutes
         guard let token = programContext.authToken,
               let member = selectedMember,
               let workout = selectedWorkout,
-              let duration = Int(durationText) else { return }
+              duration > 0 else { return }
 
         isSaving = true
         errorMessage = nil
@@ -2095,6 +2139,7 @@ struct AddDailyHealthDetailView: View {
     @State private var errorMessage: String?
     @State private var showErrorAlert = false
     @State private var showSuccessAlert = false
+    @State private var showMemberPicker = false
 
     private var canSelectAnyMember: Bool {
         programContext.globalRole == "global_admin" ||
@@ -2164,18 +2209,22 @@ struct AddDailyHealthDetailView: View {
                 formFields
 
                 Button(action: { Task { await save() } }) {
-                    if isSaving {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text("Save daily log")
-                            .font(.headline.weight(.semibold))
+                    Group {
+                        if isSaving {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Save daily log")
+                                .font(.headline.weight(.semibold))
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isFormValid ? Color.appBlue : Color(.systemGray3))
+                    .foregroundColor(.white)
+                    .cornerRadius(14)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(isFormValid ? Color.appBlue : Color(.systemGray3))
-                .foregroundColor(.white)
-                .cornerRadius(14)
+                .buttonStyle(.plain)
                 .disabled(isSaving || !isFormValid)
             }
             .padding(20)
@@ -2193,6 +2242,19 @@ struct AddDailyHealthDetailView: View {
             Button("OK") { showErrorAlert = false }
         } message: {
             Text(errorMessage ?? "Something went wrong.")
+        }
+        .sheet(isPresented: $showMemberPicker) {
+            SearchablePickerSheet(
+                title: "Select Member",
+                options: programContext.members.map {
+                    SearchablePickerSheet.PickerOption(id: $0.id, label: $0.member_name)
+                },
+                selectedId: selectedMember?.id,
+                onSelect: { option in
+                    selectedMember = programContext.members.first { $0.id == option.id }
+                }
+            )
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -2292,12 +2354,8 @@ struct AddDailyHealthDetailView: View {
             Text("Member")
                 .font(.subheadline.weight(.semibold))
             if canSelectAnyMember {
-                Menu {
-                    ForEach(programContext.members, id: \.id) { member in
-                        Button(member.member_name) {
-                            selectedMember = member
-                        }
-                    }
+                Button {
+                    showMemberPicker = true
                 } label: {
                     HStack {
                         Text(selectedMember?.member_name ?? "Select member")
@@ -2311,6 +2369,7 @@ struct AddDailyHealthDetailView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
                 }
+                .buttonStyle(.plain)
             } else {
                 HStack {
                     Text(selectedMember?.member_name ?? programContext.loggedInUserName ?? "You")

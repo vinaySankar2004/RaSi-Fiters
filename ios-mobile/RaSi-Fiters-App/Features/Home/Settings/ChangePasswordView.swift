@@ -78,18 +78,22 @@ struct ChangePasswordView: View {
                 }
 
                 Button(action: { Task { await save() } }) {
-                    if isSaving {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text("Update Password")
-                            .font(.headline.weight(.semibold))
+                    Group {
+                        if isSaving {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Update Password")
+                                .font(.headline.weight(.semibold))
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isValid ? Color.appOrange : Color(.systemGray3))
+                    .foregroundColor(.black)
+                    .cornerRadius(14)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(isValid ? Color.appOrange : Color(.systemGray3))
-                .foregroundColor(.black)
-                .cornerRadius(14)
+                .buttonStyle(.plain)
                 .disabled(!isValid || isSaving)
             }
             .padding(20)

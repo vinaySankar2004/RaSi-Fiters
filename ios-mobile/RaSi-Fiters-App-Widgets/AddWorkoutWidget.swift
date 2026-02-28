@@ -102,6 +102,7 @@ struct AddWorkoutWidgetView: View {
             Text("Quick add a session for any program.")
                 .font(.subheadline)
                 .foregroundColor(Color.black.opacity(0.65))
+                .multilineTextAlignment(.leading)
                 .lineLimit(2)
 
             Spacer(minLength: 0)
@@ -249,6 +250,7 @@ struct AddDailyHealthWidgetView: View {
             Text("Quick add a health log for any program.")
                 .font(.subheadline)
                 .foregroundColor(Color.white.opacity(0.75))
+                .multilineTextAlignment(.leading)
                 .lineLimit(2)
 
             Spacer(minLength: 0)

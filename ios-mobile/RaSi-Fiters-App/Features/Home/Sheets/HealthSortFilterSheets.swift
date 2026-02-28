@@ -642,18 +642,22 @@ struct DailyHealthEditSheet: View {
                 }
 
                 Button(action: { Task { await save() } }) {
-                    if isSaving {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text("Save changes")
-                            .font(.headline.weight(.semibold))
+                    Group {
+                        if isSaving {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Save changes")
+                                .font(.headline.weight(.semibold))
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isFormValid ? Color.appBlue : Color(.systemGray3))
+                    .foregroundColor(.white)
+                    .cornerRadius(14)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(isFormValid ? Color.appBlue : Color(.systemGray3))
-                .foregroundColor(.white)
-                .cornerRadius(14)
+                .buttonStyle(.plain)
                 .disabled(isSaving || !isFormValid)
             }
             .padding(20)
@@ -717,7 +721,8 @@ struct WorkoutLogEditSheet: View {
     let item: APIClient.MemberRecentWorkoutsResponse.Item
     let onSaved: (Int) -> Void
 
-    @State private var durationText: String
+    @State private var durationHoursText: String
+    @State private var durationMinutesText: String
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var showErrorAlert = false
@@ -730,21 +735,16 @@ struct WorkoutLogEditSheet: View {
         self.memberName = memberName
         self.item = item
         self.onSaved = onSaved
-        _durationText = State(initialValue: "\(item.durationMinutes)")
+        _durationHoursText = State(initialValue: "\(item.durationMinutes / 60)")
+        _durationMinutesText = State(initialValue: "\(item.durationMinutes % 60)")
     }
 
-    private var trimmedDurationText: String {
-        durationText.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private var durationValue: Int? {
-        guard !trimmedDurationText.isEmpty else { return nil }
-        return Int(trimmedDurationText)
+    private var computedDurationMinutes: Int {
+        (Int(durationHoursText) ?? 0) * 60 + (Int(durationMinutesText) ?? 0)
     }
 
     private var isDurationValid: Bool {
-        guard let durationValue else { return false }
-        return durationValue > 0
+        computedDurationMinutes > 0
     }
 
     private var isFormValid: Bool {
@@ -767,13 +767,34 @@ struct WorkoutLogEditSheet: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Duration (minutes)")
+                    Text("Duration")
                         .font(.subheadline.weight(.semibold))
-                    TextField("e.g. 45", text: $durationText)
-                        .keyboardType(.numberPad)
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
+                    HStack(spacing: 10) {
+                        HStack(spacing: 6) {
+                            TextField("0", text: $durationHoursText)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.center)
+                                .frame(width: 56)
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                            Text("hr")
+                                .font(.subheadline)
+                                .foregroundColor(Color(.secondaryLabel))
+                        }
+                        HStack(spacing: 6) {
+                            TextField("0", text: $durationMinutesText)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.center)
+                                .frame(width: 56)
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .cornerRadius(12)
+                            Text("min")
+                                .font(.subheadline)
+                                .foregroundColor(Color(.secondaryLabel))
+                        }
+                    }
                     if !isDurationValid {
                         Text("Enter a duration greater than 0.")
                             .font(.footnote.weight(.semibold))
@@ -782,18 +803,22 @@ struct WorkoutLogEditSheet: View {
                 }
 
                 Button(action: { Task { await save() } }) {
-                    if isSaving {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text("Save changes")
-                            .font(.headline.weight(.semibold))
+                    Group {
+                        if isSaving {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Save changes")
+                                .font(.headline.weight(.semibold))
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isFormValid ? Color.appBlue : Color(.systemGray3))
+                    .foregroundColor(.white)
+                    .cornerRadius(14)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(isFormValid ? Color.appBlue : Color(.systemGray3))
-                .foregroundColor(.white)
-                .cornerRadius(14)
+                .buttonStyle(.plain)
                 .disabled(isSaving || !isFormValid)
             }
             .padding(20)
@@ -808,7 +833,8 @@ struct WorkoutLogEditSheet: View {
     }
 
     private func save() async {
-        guard let durationValue, isFormValid else { return }
+        let durationValue = computedDurationMinutes
+        guard isFormValid else { return }
         isSaving = true
         errorMessage = nil
 

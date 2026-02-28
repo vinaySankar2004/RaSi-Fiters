@@ -245,18 +245,22 @@ struct MemberDetailEditView: View {
 
                 // Save Button
                 Button(action: { Task { await save() } }) {
-                    if isSaving {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text("Save changes")
-                            .font(.headline.weight(.semibold))
+                    Group {
+                        if isSaving {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text("Save changes")
+                                .font(.headline.weight(.semibold))
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.appOrange)
+                    .foregroundColor(.black)
+                    .cornerRadius(14)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.appOrange)
-                .foregroundColor(.black)
-                .cornerRadius(14)
+                .buttonStyle(.plain)
                 .disabled(isSaving)
 
                 // Remove Button

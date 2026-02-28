@@ -109,7 +109,9 @@ struct InviteCard: View {
                         .padding(.vertical, 10)
                         .background(Capsule().fill(Color.appOrange))
                         .foregroundColor(.black)
+                        .contentShape(Capsule())
                 }
+                .buttonStyle(.plain)
                 
                 Button(action: onDecline) {
                     Text("Decline")
@@ -118,7 +120,9 @@ struct InviteCard: View {
                         .padding(.vertical, 10)
                         .background(Capsule().fill(Color(.systemGray5)))
                         .foregroundColor(Color(.label))
+                        .contentShape(Capsule())
                 }
+                .buttonStyle(.plain)
                 
                 if isAdmin, let onRevoke {
                     Button(action: onRevoke) {
@@ -128,7 +132,9 @@ struct InviteCard: View {
                             .padding(.vertical, 10)
                             .background(Capsule().stroke(Color.appRed, lineWidth: 1.5))
                             .foregroundColor(.appRed)
+                            .contentShape(Capsule())
                     }
+                    .buttonStyle(.plain)
                 }
                 
                 Spacer()

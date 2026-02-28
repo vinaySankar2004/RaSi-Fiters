@@ -1,5 +1,13 @@
 import SwiftUI
 
+private func formatDuration(_ totalMinutes: Int) -> String {
+    let h = totalMinutes / 60
+    let m = totalMinutes % 60
+    if h == 0 { return "\(m)m" }
+    if m == 0 { return "\(h)h" }
+    return "\(h)h \(m)m"
+}
+
 // MARK: - View Workouts Sort Field Enum
 enum WorkoutSortField: String, CaseIterable {
     case date
@@ -298,7 +306,7 @@ struct MemberRecentDetail: View {
                     .foregroundColor(Color(.secondaryLabel))
             }
             Spacer()
-            Text("\(item.durationMinutes) min")
+            Text(formatDuration(item.durationMinutes))
                 .font(.subheadline.weight(.semibold))
         }
         .padding(.vertical, 10)

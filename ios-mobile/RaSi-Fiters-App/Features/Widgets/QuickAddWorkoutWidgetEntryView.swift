@@ -9,11 +9,14 @@ struct QuickAddWorkoutWidgetEntryView: View {
     @State private var selectedMemberId: String?
     @State private var selectedWorkoutName: String = ""
     @State private var selectedDate: Date = Date()
-    @State private var durationText: String = ""
+    @State private var durationHoursText: String = ""
+    @State private var durationMinutesText: String = ""
     @State private var isSaving = false
     @State private var isLoadingDetails = false
     @State private var errorMessage: String?
     @State private var showSuccessToast = false
+    @State private var showMemberPicker = false
+    @State private var showWorkoutPicker = false
     @State private var programMembers: [String: [APIClient.MembershipDetailDTO]] = [:]
     @State private var programWorkouts: [String: [APIClient.ProgramWorkoutDTO]] = [:]
 
@@ -58,6 +61,32 @@ struct QuickAddWorkoutWidgetEntryView: View {
         }
         .onChange(of: selectedProgramIds) { _, _ in
             Task { await loadSelectedProgramData() }
+        }
+        .sheet(isPresented: $showMemberPicker) {
+            SearchablePickerSheet(
+                title: "Select Member",
+                options: availableMembers.map {
+                    SearchablePickerSheet.PickerOption(id: $0.id, label: $0.name)
+                },
+                selectedId: selectedMemberId,
+                onSelect: { option in
+                    selectedMemberId = option.id
+                }
+            )
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showWorkoutPicker) {
+            SearchablePickerSheet(
+                title: "Select Workout",
+                options: availableWorkouts.map {
+                    SearchablePickerSheet.PickerOption(id: $0, label: $0)
+                },
+                selectedId: selectedWorkoutName.isEmpty ? nil : selectedWorkoutName,
+                onSelect: { option in
+                    selectedWorkoutName = option.label
+                }
+            )
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -174,12 +203,8 @@ struct QuickAddWorkoutWidgetEntryView: View {
                     .background(Color(.systemGray5))
                     .cornerRadius(12)
                 } else {
-                    Menu {
-                        ForEach(availableMembers) { member in
-                            Button(member.name) {
-                                selectedMemberId = member.id
-                            }
-                        }
+                    Button {
+                        showMemberPicker = true
                     } label: {
                         HStack {
                             Text(selectedMemberName ?? "Select member")
@@ -193,6 +218,7 @@ struct QuickAddWorkoutWidgetEntryView: View {
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
                     }
+                    .buttonStyle(.plain)
                 }
             } else {
                 HStack {
@@ -232,10 +258,8 @@ struct QuickAddWorkoutWidgetEntryView: View {
                 .background(Color(.systemGray5))
                 .cornerRadius(12)
             } else {
-                Menu {
-                    ForEach(availableWorkouts, id: \.self) { option in
-                        Button(option) { selectedWorkoutName = option }
-                    }
+                Button {
+                    showWorkoutPicker = true
                 } label: {
                     HStack {
                         Text(selectedWorkoutName.isEmpty ? "Select workout" : selectedWorkoutName)
@@ -249,6 +273,7 @@ struct QuickAddWorkoutWidgetEntryView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
                 }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -267,32 +292,61 @@ struct QuickAddWorkoutWidgetEntryView: View {
         }
     }
 
+    private var computedDurationMinutes: Int {
+        (Int(durationHoursText) ?? 0) * 60 + (Int(durationMinutesText) ?? 0)
+    }
+
     private var durationField: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Duration (mins)")
+            Text("Duration")
                 .font(.subheadline.weight(.semibold))
-            TextField("e.g. 45", text: $durationText)
-                .keyboardType(.numberPad)
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
+            HStack(spacing: 10) {
+                HStack(spacing: 6) {
+                    TextField("0", text: $durationHoursText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .frame(width: 56)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    Text("hr")
+                        .font(.subheadline)
+                        .foregroundColor(Color(.secondaryLabel))
+                }
+                HStack(spacing: 6) {
+                    TextField("0", text: $durationMinutesText)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .frame(width: 56)
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    Text("min")
+                        .font(.subheadline)
+                        .foregroundColor(Color(.secondaryLabel))
+                }
+            }
         }
     }
 
     private var saveButton: some View {
         Button(action: { Task { await save() } }) {
-            if isSaving {
-                ProgressView().tint(colorScheme == .dark ? .black : .white)
-            } else {
-                Text("Save workout")
-                    .font(.headline.weight(.semibold))
+            Group {
+                if isSaving {
+                    ProgressView().tint(colorScheme == .dark ? .black : .white)
+                } else {
+                    Text("Save workout")
+                        .font(.headline.weight(.semibold))
+                }
             }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(isFormValid ? Color.appOrange : Color(.systemGray3))
+            .foregroundColor(.black)
+            .cornerRadius(14)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(isFormValid ? Color.appOrange : Color(.systemGray3))
-        .foregroundColor(.black)
-        .cornerRadius(14)
+        .buttonStyle(.plain)
         .disabled(!isFormValid || isSaving)
     }
 
@@ -365,7 +419,7 @@ struct QuickAddWorkoutWidgetEntryView: View {
         guard !selectedProgramIds.isEmpty else { return false }
         guard let _ = resolvedMemberId else { return false }
         guard !selectedWorkoutName.isEmpty else { return false }
-        return Int(durationText) != nil
+        return computedDurationMinutes > 0
     }
 
     private var resolvedMemberId: String? {
@@ -441,10 +495,11 @@ struct QuickAddWorkoutWidgetEntryView: View {
             errorMessage = "Select at least one program."
             return
         }
+        let duration = computedDurationMinutes
         guard let memberId = resolvedMemberId,
               let memberName = resolvedMemberName,
               !selectedWorkoutName.isEmpty,
-              let duration = Int(durationText) else {
+              duration > 0 else {
             return
         }
 

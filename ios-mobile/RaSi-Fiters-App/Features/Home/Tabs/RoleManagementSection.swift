@@ -239,7 +239,9 @@ struct ManageRolesView: View {
                 Capsule()
                     .strokeBorder(isSelected ? color.opacity(0.8) : color.opacity(0.3), lineWidth: isSelected ? 2 : 1)
             )
+            .contentShape(Capsule())
         }
+        .buttonStyle(.plain)
         .disabled(isSelected || isDisabled)
         .opacity(isSelected || !isDisabled ? 1.0 : 0.55)
     }

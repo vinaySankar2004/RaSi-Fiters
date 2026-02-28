@@ -105,18 +105,22 @@ struct CreateProgramTabView: View {
                 }
                 
                 Button(action: { Task { await save() } }) {
-                    if isSaving {
-                        ProgressView().tint(colorScheme == .dark ? .black : .white)
-                    } else {
-                        Text("Create Program")
-                            .font(.headline.weight(.semibold))
+                    Group {
+                        if isSaving {
+                            ProgressView().tint(colorScheme == .dark ? .black : .white)
+                        } else {
+                            Text("Create Program")
+                                .font(.headline.weight(.semibold))
+                        }
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(isFormValid ? accentColor : Color(.systemGray3))
+                    .foregroundColor(.black)
+                    .cornerRadius(14)
+                    .contentShape(Rectangle())
                 }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(isFormValid ? accentColor : Color(.systemGray3))
-                .foregroundColor(.black)
-                .cornerRadius(14)
+                .buttonStyle(.plain)
                 .disabled(!isFormValid || isSaving)
                 
                 Spacer(minLength: 40)

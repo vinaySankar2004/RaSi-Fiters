@@ -554,7 +554,8 @@ function LogWorkoutForm({
   const [memberId, setMemberId] = useState("");
   const [workoutName, setWorkoutName] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [duration, setDuration] = useState("");
+  const [durationHours, setDurationHours] = useState("");
+  const [durationMinutes, setDurationMinutes] = useState("");
 
   useEffect(() => {
     const loadLookups = async () => {
@@ -570,8 +571,9 @@ function LogWorkoutForm({
     loadLookups();
   }, [token, programId, canSelectAnyMember, userId]);
 
+  const computedDuration = (Number(durationHours) || 0) * 60 + (Number(durationMinutes) || 0);
   const canSubmit =
-    workoutName.trim().length > 0 && date.trim().length > 0 && duration.trim().length > 0 && (!canSelectAnyMember || memberId);
+    workoutName.trim().length > 0 && date.trim().length > 0 && computedDuration > 0 && (!canSelectAnyMember || memberId);
 
   return (
     <div className="modal-surface w-full max-w-lg rounded-3xl p-6">
@@ -598,6 +600,7 @@ function LogWorkoutForm({
             options={members.map((m) => ({ value: m.id, label: m.member_name }))}
             onChange={setMemberId}
             placeholder="Select member"
+            searchable
           />
         ) : (
           <div>
@@ -614,6 +617,7 @@ function LogWorkoutForm({
           options={workouts.map((w) => ({ value: w.workout_name, label: w.workout_name }))}
           onChange={setWorkoutName}
           placeholder="Select workout"
+          searchable
         />
 
         <div>
@@ -627,13 +631,28 @@ function LogWorkoutForm({
         </div>
 
         <div>
-          <label className="text-sm font-semibold text-rf-text">Duration (mins)</label>
-          <input
-            value={duration}
-            onChange={(event) => setDuration(event.target.value)}
-            className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-            placeholder="e.g. 45"
-          />
+          <label className="text-sm font-semibold text-rf-text">Duration</label>
+          <div className="mt-2 flex items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              value={durationHours}
+              onChange={(event) => setDurationHours(event.target.value)}
+              className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+              placeholder="0"
+            />
+            <span className="text-sm text-rf-text-muted">hr</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={durationMinutes}
+              onChange={(event) => setDurationMinutes(event.target.value)}
+              className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+              placeholder="0"
+            />
+            <span className="text-sm text-rf-text-muted">min</span>
+          </div>
         </div>
       </div>
 
@@ -647,7 +666,7 @@ function LogWorkoutForm({
             member_id: canSelectAnyMember ? memberId || undefined : userId,
             workout_name: workoutName,
             date,
-            duration: Number(duration)
+            duration: computedDuration
           })
         }
         className="mt-5 w-full rounded-2xl bg-rf-accent px-4 py-3 text-sm font-semibold text-black"
@@ -741,6 +760,7 @@ function LogDailyHealthForm({
             options={members.map((m) => ({ value: m.id, label: m.member_name }))}
             onChange={setMemberId}
             placeholder="Select member"
+            searchable
           />
         ) : (
           <div>

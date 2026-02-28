@@ -29,6 +29,14 @@ const SORT_DIRS = [
   { value: "asc", label: "Ascending" }
 ];
 
+function formatDuration(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 export default function MemberWorkoutsPage() {
   const router = useRouter();
   const params = useClientSearchParams();
@@ -49,7 +57,8 @@ export default function MemberWorkoutsPage() {
   const [endDate, setEndDate] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [editTarget, setEditTarget] = useState<MemberRecentItem | null>(null);
-  const [editDuration, setEditDuration] = useState("");
+  const [editHours, setEditHours] = useState("");
+  const [editMinutes, setEditMinutes] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -123,14 +132,15 @@ export default function MemberWorkoutsPage() {
 
   const openEdit = (item: MemberRecentItem) => {
     setEditTarget(item);
-    setEditDuration(String(item.durationMinutes));
+    setEditHours(String(Math.floor(item.durationMinutes / 60)));
+    setEditMinutes(String(item.durationMinutes % 60));
     setErrorMessage(null);
   };
 
   const submitEdit = () => {
     if (!editTarget) return;
-    const durationValue = Number(editDuration);
-    if (!Number.isFinite(durationValue) || durationValue <= 0) {
+    const durationValue = (Number(editHours) || 0) * 60 + (Number(editMinutes) || 0);
+    if (durationValue <= 0) {
       setErrorMessage("Enter a valid duration before saving.");
       return;
     }
@@ -192,7 +202,7 @@ export default function MemberWorkoutsPage() {
                   <p className="text-xs text-rf-text-muted">{item.workoutDate}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-rf-text">{item.durationMinutes} min</p>
+                  <p className="text-sm font-semibold text-rf-text">{formatDuration(item.durationMinutes)}</p>
                 </div>
               </div>
               {canEdit && (
@@ -300,14 +310,28 @@ export default function MemberWorkoutsPage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-semibold text-rf-text">Duration (minutes)</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={editDuration}
-                  onChange={(event) => setEditDuration(event.target.value)}
-                  className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-                />
+                <label className="text-sm font-semibold text-rf-text">Duration</label>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    value={editHours}
+                    onChange={(event) => setEditHours(event.target.value)}
+                    className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                    placeholder="0"
+                  />
+                  <span className="text-sm text-rf-text-muted">hr</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="59"
+                    value={editMinutes}
+                    onChange={(event) => setEditMinutes(event.target.value)}
+                    className="input-shell w-20 rounded-2xl px-4 py-3 text-center text-sm font-medium"
+                    placeholder="0"
+                  />
+                  <span className="text-sm text-rf-text-muted">min</span>
+                </div>
               </div>
             </div>
             <div className="mt-6 flex items-center justify-end gap-3">

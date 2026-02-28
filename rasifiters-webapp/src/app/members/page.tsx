@@ -558,6 +558,14 @@ function MemberStreakCard({ current, longest, onClick }: { current: number; long
   );
 }
 
+function formatDuration(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 function MemberRecentCard({ items, onClick }: { items: MemberRecentItem[]; onClick: () => void }) {
   return (
     <button
@@ -580,7 +588,7 @@ function MemberRecentCard({ items, onClick }: { items: MemberRecentItem[]; onCli
               <p className="font-semibold text-rf-text">{item.workoutType}</p>
               <p className="text-xs text-rf-text-muted">{formatShortDate(item.workoutDate) ?? item.workoutDate}</p>
             </div>
-            <p className="font-semibold text-rf-text">{item.durationMinutes} min</p>
+            <p className="font-semibold text-rf-text">{formatDuration(item.durationMinutes)}</p>
           </div>
         ))}
       </div>

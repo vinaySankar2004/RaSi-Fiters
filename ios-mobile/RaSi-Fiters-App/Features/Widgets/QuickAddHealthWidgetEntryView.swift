@@ -15,6 +15,7 @@ struct QuickAddHealthWidgetEntryView: View {
     @State private var isLoadingDetails = false
     @State private var errorMessage: String?
     @State private var showSuccessToast = false
+    @State private var showMemberPicker = false
     @State private var programMembers: [String: [APIClient.MembershipDetailDTO]] = [:]
 
     private struct MemberOption: Identifiable, Hashable {
@@ -58,6 +59,19 @@ struct QuickAddHealthWidgetEntryView: View {
         }
         .onChange(of: selectedProgramIds) { _, _ in
             Task { await loadSelectedProgramData() }
+        }
+        .sheet(isPresented: $showMemberPicker) {
+            SearchablePickerSheet(
+                title: "Select Member",
+                options: availableMembers.map {
+                    SearchablePickerSheet.PickerOption(id: $0.id, label: $0.name)
+                },
+                selectedId: selectedMemberId,
+                onSelect: { option in
+                    selectedMemberId = option.id
+                }
+            )
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -174,12 +188,8 @@ struct QuickAddHealthWidgetEntryView: View {
                     .background(Color(.systemGray5))
                     .cornerRadius(12)
                 } else {
-                    Menu {
-                        ForEach(availableMembers) { member in
-                            Button(member.name) {
-                                selectedMemberId = member.id
-                            }
-                        }
+                    Button {
+                        showMemberPicker = true
                     } label: {
                         HStack {
                             Text(selectedMemberName ?? "Select member")
@@ -193,6 +203,7 @@ struct QuickAddHealthWidgetEntryView: View {
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
                     }
+                    .buttonStyle(.plain)
                 }
             } else {
                 HStack {
@@ -292,18 +303,22 @@ struct QuickAddHealthWidgetEntryView: View {
 
     private var saveButton: some View {
         Button(action: { Task { await save() } }) {
-            if isSaving {
-                ProgressView().tint(colorScheme == .dark ? .black : .white)
-            } else {
-                Text("Save daily log")
-                    .font(.headline.weight(.semibold))
+            Group {
+                if isSaving {
+                    ProgressView().tint(colorScheme == .dark ? .black : .white)
+                } else {
+                    Text("Save daily log")
+                        .font(.headline.weight(.semibold))
+                }
             }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(isFormValid ? Color.appBlue : Color(.systemGray3))
+            .foregroundColor(.white)
+            .cornerRadius(14)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity)
-        .padding()
-        .background(isFormValid ? Color.appBlue : Color(.systemGray3))
-        .foregroundColor(.white)
-        .cornerRadius(14)
+        .buttonStyle(.plain)
         .disabled(!isFormValid || isSaving)
     }
 
