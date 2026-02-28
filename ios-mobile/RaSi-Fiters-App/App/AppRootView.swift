@@ -59,9 +59,7 @@ struct AppRootView: View {
             guard phase == .active else { return }
             Task { @MainActor in
                 await programContext.checkMinimumSupportedVersion()
-                if programContext.isOffline {
-                    await programContext.refreshSessionIfNeeded()
-                }
+                await programContext.refreshSessionIfNeeded()
                 if programContext.authToken != nil {
                     programContext.startNotificationStreamIfNeeded()
                 }

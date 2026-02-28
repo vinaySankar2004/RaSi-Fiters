@@ -23,11 +23,13 @@ export async function middleware(req: NextRequest) {
     return redirectToLogin(req, { clearCookie: true, reason: "invalid" });
   }
 
-  const payload = await verifyJwt(token, secret);
-  if (!payload) {
-    return redirectToLogin(req, { clearCookie: true, reason: "expired" });
+  const result = await verifyJwt(token, secret);
+  if (result.status === "invalid") {
+    return redirectToLogin(req, { clearCookie: true, reason: "invalid" });
   }
 
+  // "valid" and "expired" both pass through; the client-side AuthProvider
+  // will silently refresh an expired token using the stored refresh token.
   return NextResponse.next();
 }
 
@@ -51,13 +53,18 @@ function redirectToLogin(
   return response;
 }
 
-async function verifyJwt(token: string, secret: string) {
+type JwtResult =
+  | { status: "valid"; payload: Record<string, unknown> }
+  | { status: "expired" }
+  | { status: "invalid" };
+
+async function verifyJwt(token: string, secret: string): Promise<JwtResult> {
   const parts = token.split(".");
-  if (parts.length !== 3) return null;
+  if (parts.length !== 3) return { status: "invalid" };
   const [headerPart, payloadPart, signaturePart] = parts;
 
   const header = safeJsonParse(decodeBase64Url(headerPart));
-  if (!header || header.alg !== "HS256") return null;
+  if (!header || header.alg !== "HS256") return { status: "invalid" };
 
   const data = new TextEncoder().encode(`${headerPart}.${payloadPart}`);
   const signature = base64UrlToUint8Array(signaturePart);
@@ -70,17 +77,17 @@ async function verifyJwt(token: string, secret: string) {
   );
 
   const valid = await crypto.subtle.verify("HMAC", key, signature, data);
-  if (!valid) return null;
+  if (!valid) return { status: "invalid" };
 
   const payload = safeJsonParse(decodeBase64Url(payloadPart));
-  if (!payload) return null;
+  if (!payload) return { status: "invalid" };
 
   const exp = typeof payload.exp === "number" ? payload.exp : Number(payload.exp);
   if (Number.isFinite(exp) && Date.now() >= exp * 1000) {
-    return null;
+    return { status: "expired" };
   }
 
-  return payload;
+  return { status: "valid", payload };
 }
 
 function decodeBase64Url(input: string) {

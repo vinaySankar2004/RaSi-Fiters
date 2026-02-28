@@ -1320,16 +1320,7 @@ final class ProgramContext: ObservableObject {
     func refreshSessionIfNeeded() async {
         guard let refreshToken, !refreshToken.isEmpty else { return }
         do {
-            let response = try await APIClient.shared.refreshSession(refreshToken: refreshToken)
-            authToken = response.token
-            self.refreshToken = response.refreshToken ?? refreshToken
-            persistSession()
-            isOffline = false
-            offlineNotice = nil
-            await loadLookupData()
-            if programId != nil {
-                await loadMembershipDetails()
-            }
+            try await performTokenRefresh(using: refreshToken)
         } catch {
             if isNetworkError(error) {
                 isOffline = true
@@ -1339,10 +1330,33 @@ final class ProgramContext: ObservableObject {
                 return
             }
             if isAuthFailure(error) {
+                // Retry once: another call may have rotated the token already
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                if let retryToken = SessionStore.shared.refreshToken,
+                   retryToken != refreshToken {
+                    do {
+                        try await performTokenRefresh(using: retryToken)
+                        return
+                    } catch {}
+                }
                 signOut()
                 return
             }
             errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func performTokenRefresh(using token: String) async throws {
+        let response = try await APIClient.shared.refreshSession(refreshToken: token)
+        authToken = response.token
+        refreshToken = response.refreshToken ?? token
+        persistSession()
+        isOffline = false
+        offlineNotice = nil
+        await loadLookupData()
+        if programId != nil {
+            await loadMembershipDetails()
         }
     }
 

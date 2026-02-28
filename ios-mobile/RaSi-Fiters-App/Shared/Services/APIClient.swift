@@ -19,6 +19,8 @@ final class APIClient {
     var tokenUpdateHandler: ((String, String?) -> Void)?
     var authFailureHandler: (() -> Void)?
 
+    private var inflightRefreshTask: Task<String?, Error>?
+
     init(baseURL: URL = APIConfig.activeBaseURL, session: URLSession = .shared) {
         self.baseURL = baseURL
         self.session = session
@@ -1480,10 +1482,23 @@ final class APIClient {
 
     // MARK: - Helpers
 
-    private func data(for request: URLRequest, allowRefresh: Bool = true) async throws -> Data {
-        let (data, response) = try await rawData(for: request)
+    private static let proactiveRefreshMargin: TimeInterval = 300
 
-        if response.statusCode == 401, allowRefresh, shouldAttemptRefresh(for: request) {
+    private func data(for request: URLRequest, allowRefresh: Bool = true) async throws -> Data {
+        var activeRequest = request
+
+        if allowRefresh, shouldAttemptRefresh(for: request),
+           let bearer = request.value(forHTTPHeaderField: "Authorization"),
+           bearer.hasPrefix("Bearer "),
+           Self.accessTokenNearExpiry(String(bearer.dropFirst(7))) {
+            if let freshToken = try? await refreshAccessTokenIfPossible() {
+                activeRequest.setValue("Bearer \(freshToken)", forHTTPHeaderField: "Authorization")
+            }
+        }
+
+        let (data, response) = try await rawData(for: activeRequest)
+
+        if response.statusCode == 401, allowRefresh, shouldAttemptRefresh(for: activeRequest) {
             do {
                 if let newToken = try await refreshAccessTokenIfPossible() {
                     var retryRequest = request
@@ -1523,12 +1538,21 @@ final class APIClient {
     }
 
     private func refreshAccessTokenIfPossible() async throws -> String? {
-        guard let refreshToken = SessionStore.shared.refreshToken else { return nil }
-        let response = try await refreshSession(refreshToken: refreshToken)
-        let newRefreshToken = response.refreshToken ?? refreshToken
-        SessionStore.shared.saveTokens(accessToken: response.token, refreshToken: newRefreshToken)
-        tokenUpdateHandler?(response.token, newRefreshToken)
-        return response.token
+        if let existing = inflightRefreshTask {
+            return try await existing.value
+        }
+
+        let task = Task<String?, Error> {
+            defer { inflightRefreshTask = nil }
+            guard let refreshToken = SessionStore.shared.refreshToken else { return nil }
+            let response = try await refreshSession(refreshToken: refreshToken)
+            let newRefreshToken = response.refreshToken ?? refreshToken
+            SessionStore.shared.saveTokens(accessToken: response.token, refreshToken: newRefreshToken)
+            tokenUpdateHandler?(response.token, newRefreshToken)
+            return response.token
+        }
+        inflightRefreshTask = task
+        return try await task.value
     }
 
     private func shouldAttemptRefresh(for request: URLRequest) -> Bool {
@@ -1541,6 +1565,21 @@ final class APIClient {
             return false
         }
         return true
+    }
+
+    static func accessTokenNearExpiry(_ token: String) -> Bool {
+        let parts = token.split(separator: ".")
+        guard parts.count == 3 else { return true }
+        var base64 = String(parts[1])
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        while base64.count % 4 != 0 { base64.append("=") }
+        guard let payloadData = Data(base64Encoded: base64),
+              let json = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any],
+              let exp = json["exp"] as? TimeInterval else {
+            return true
+        }
+        return Date(timeIntervalSince1970: exp).timeIntervalSinceNow < proactiveRefreshMargin
     }
 
     private func extractErrorMessage(from data: Data) -> String? {
