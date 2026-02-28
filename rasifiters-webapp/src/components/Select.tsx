@@ -56,11 +56,28 @@ export function Select({
       setOpen(false);
       setSearch("");
     };
-    window.addEventListener("scroll", close, true);
+    const handleScroll = (event: Event) => {
+      const target = event.target instanceof Node ? event.target : null;
+      if (target && dropdownRef.current?.contains(target)) return;
+      close();
+    };
+    window.addEventListener("scroll", handleScroll, true);
     window.addEventListener("resize", close);
     return () => {
-      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("scroll", handleScroll, true);
       window.removeEventListener("resize", close);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+    body.style.overflow = "hidden";
+    body.classList.add("modal-open");
+    return () => {
+      body.style.overflow = previousOverflow;
+      body.classList.remove("modal-open");
     };
   }, [open]);
 
@@ -103,7 +120,10 @@ export function Select({
           />
         </div>
       )}
-      <div className="max-h-[min(16rem,70vh)] overflow-auto overscroll-contain py-1">
+      <div
+        className="max-h-[min(16rem,70vh)] touch-pan-y overflow-auto overscroll-contain py-1"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
         {filtered.length === 0 ? (
           <p className="px-4 py-3 text-sm text-rf-text-muted">No results</p>
         ) : (
