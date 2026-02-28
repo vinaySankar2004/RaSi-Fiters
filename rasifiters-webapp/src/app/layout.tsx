@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { AppProviders } from "@/app/providers";
 import { AppShell } from "@/app/shell";
@@ -36,6 +38,8 @@ export default function RootLayout({
         <AppProviders>
           <AppShell>{children}</AppShell>
         </AppProviders>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
