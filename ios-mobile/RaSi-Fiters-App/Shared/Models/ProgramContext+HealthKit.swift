@@ -57,7 +57,12 @@ extension ProgramContext {
 
         do {
             let workouts = try await HealthKitService.shared.fetchNewWorkouts()
-            guard !workouts.isEmpty else { return }
+
+            if workouts.isEmpty {
+                lastHealthKitSyncDate = Date()
+                persistHealthKitSettings()
+                return
+            }
 
             let aggregated = HealthKitService.shared.aggregate(workouts)
             let count = await HealthKitService.shared.syncToBackend(
@@ -69,7 +74,7 @@ extension ProgramContext {
             )
 
             lastHealthKitSyncDate = Date()
-            lastHealthKitSyncCount = count
+            lastHealthKitSyncCount += count
             persistHealthKitSettings()
         } catch {
             // Sync failed — will retry on next trigger
