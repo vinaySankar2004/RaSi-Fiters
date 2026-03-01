@@ -78,6 +78,19 @@ struct ProgramMyAccountSection: View {
                 }
                 .buttonStyle(.plain)
 
+                // Apple Health
+                NavigationLink {
+                    AppleHealthSettingsView()
+                } label: {
+                    settingsRow(
+                        icon: "heart.fill",
+                        color: .appRed,
+                        title: "Apple Health",
+                        subtitle: "Sync workouts automatically"
+                    )
+                }
+                .buttonStyle(.plain)
+
                 Link(destination: privacyPolicyURL) {
                     settingsRow(
                         icon: "doc.text",

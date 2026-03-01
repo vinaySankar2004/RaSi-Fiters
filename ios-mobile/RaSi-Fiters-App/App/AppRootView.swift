@@ -39,14 +39,21 @@ struct AppRootView: View {
                 await MainActor.run {
                     programContext.startNotificationStreamIfNeeded()
                 }
+                if programContext.isHealthKitEnabled {
+                    await programContext.performHealthKitSync()
+                }
             }
         }
         .onChange(of: programContext.authToken) { _, _ in
             Task { @MainActor in
                 if programContext.authToken != nil {
                     programContext.startNotificationStreamIfNeeded()
+                    if programContext.isHealthKitEnabled {
+                        await programContext.performHealthKitSync()
+                    }
                 } else {
                     programContext.stopNotificationStream()
+                    programContext.stopHealthKitSync()
                 }
             }
         }
@@ -62,6 +69,9 @@ struct AppRootView: View {
                 await programContext.refreshSessionIfNeeded()
                 if programContext.authToken != nil {
                     programContext.startNotificationStreamIfNeeded()
+                    if programContext.isHealthKitEnabled {
+                        await programContext.performHealthKitSync()
+                    }
                 }
             }
         }

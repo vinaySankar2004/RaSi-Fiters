@@ -167,6 +167,8 @@ struct ProgramPickerView: View {
                 ChangePasswordView()
             case .appearance:
                 AppearanceSettingsView()
+            case .appleHealth:
+                AppleHealthSettingsView()
             }
         }
         .alert("Delete Program?", isPresented: $showDeleteConfirmation) {
@@ -360,6 +362,7 @@ private enum AccountDestination: String, Identifiable {
     case profile
     case password
     case appearance
+    case appleHealth
 
     var id: String { rawValue }
 }
@@ -416,6 +419,18 @@ private struct AccountMenuSheet: View {
                                     color: .appPurple,
                                     title: "Appearance",
                                     subtitle: "Choose light or dark mode"
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                onSelectDestination(.appleHealth)
+                            } label: {
+                                AccountRow(
+                                    icon: "heart.fill",
+                                    color: .appRed,
+                                    title: "Apple Health",
+                                    subtitle: "Sync workouts automatically"
                                 )
                             }
                             .buttonStyle(.plain)

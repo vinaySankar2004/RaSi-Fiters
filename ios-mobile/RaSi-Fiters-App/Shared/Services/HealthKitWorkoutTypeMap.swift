@@ -1,0 +1,46 @@
+import HealthKit
+
+enum HealthKitWorkoutTypeMap {
+    static func workoutName(for activityType: HKWorkoutActivityType) -> String {
+        switch activityType {
+        case .running:                          return "Running"
+        case .cycling:                          return "Cycling"
+        case .walking:                          return "Walking"
+        case .hiking:                           return "Hiking"
+        case .swimming:                         return "Swimming"
+        case .yoga:                             return "Yoga"
+        case .pilates:                          return "Pilates"
+        case .dance:                            return "Dance"
+        case .traditionalStrengthTraining:      return "Strength Training"
+        case .functionalStrengthTraining:       return "Strength Training"
+        case .highIntensityIntervalTraining:    return "HIIT"
+        case .crossTraining:                    return "Cross Training"
+        case .coreTraining:                     return "Core Training"
+        case .elliptical:                       return "Elliptical"
+        case .rowing:                           return "Rowing"
+        case .stairClimbing:                    return "Stair Climbing"
+        case .jumpRope:                         return "Jump Rope"
+        case .kickboxing:                       return "Kickboxing"
+        case .boxing:                           return "Boxing"
+        case .martialArts:                      return "Martial Arts"
+        case .tennis:                           return "Tennis"
+        case .basketball:                       return "Basketball"
+        case .soccer:                           return "Soccer"
+        case .baseball:                         return "Baseball"
+        case .volleyball:                       return "Volleyball"
+        case .golf:                             return "Golf"
+        case .tableTennis:                      return "Table Tennis"
+        case .badminton:                        return "Badminton"
+        case .racquetball:                      return "Racquetball"
+        case .squash:                           return "Squash"
+        case .skatingSports:                    return "Skating"
+        case .surfingSports:                    return "Surfing"
+        case .snowSports:                       return "Snow Sports"
+        case .climbing:                         return "Climbing"
+        case .flexibility:                      return "Flexibility"
+        case .mixedCardio:                      return "Cardio"
+        case .cooldown:                         return "Cooldown"
+        default:                                return "Other Workout"
+        }
+    }
+}
