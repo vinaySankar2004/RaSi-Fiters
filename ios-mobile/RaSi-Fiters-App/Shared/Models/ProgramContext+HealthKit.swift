@@ -42,12 +42,18 @@ extension ProgramContext {
 
     // MARK: - Sync
 
+    private static var isSyncing = false
+
     @MainActor
     func performHealthKitSync() async {
-        guard isHealthKitEnabled,
+        guard !ProgramContext.isSyncing,
+              isHealthKitEnabled,
               let token = authToken, !token.isEmpty,
               let memberName = loggedInUserName, !memberName.isEmpty,
               !healthKitSyncProgramIds.isEmpty else { return }
+
+        ProgramContext.isSyncing = true
+        defer { ProgramContext.isSyncing = false }
 
         do {
             let workouts = try await HealthKitService.shared.fetchNewWorkouts()

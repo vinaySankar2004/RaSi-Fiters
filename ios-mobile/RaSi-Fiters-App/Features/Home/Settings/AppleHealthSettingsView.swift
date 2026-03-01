@@ -99,7 +99,7 @@ struct AppleHealthSettingsView: View {
                 Circle()
                     .fill(Color.appGreen.opacity(0.14))
                     .frame(width: 42, height: 42)
-                Image(systemName: "checkmark.heart.fill")
+                Image(systemName: "heart.fill")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.appGreen)
             }

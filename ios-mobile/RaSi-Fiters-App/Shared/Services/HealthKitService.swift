@@ -82,6 +82,13 @@ final class HealthKitService {
 
     func startBackgroundDelivery(onUpdate: @escaping () -> Void) {
         guard isAvailable else { return }
+
+        // Stop any existing observer before registering a new one
+        if let existing = observerQuery {
+            healthStore.stop(existing)
+            observerQuery = nil
+        }
+
         let workoutType = HKObjectType.workoutType()
 
         let query = HKObserverQuery(sampleType: workoutType, predicate: nil) { _, completionHandler, error in
