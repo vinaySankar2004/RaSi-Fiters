@@ -42,6 +42,12 @@ struct AppleHealthSettingsView: View {
         .background(Color.appBackground.ignoresSafeArea())
         .navigationTitle("Apple Health")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            guard let token = programContext.authToken, !token.isEmpty else { return }
+            if let programs = try? await APIClient.shared.fetchPrograms(token: token) {
+                programContext.programs = programs
+            }
+        }
     }
 
     // MARK: - Connect Button

@@ -123,6 +123,9 @@ struct ProgramPickerView: View {
         .task {
             await loadPrograms()
             await programContext.loadPendingInvites()
+            if programContext.isHealthKitEnabled {
+                await programContext.performHealthKitSync()
+            }
         }
         .onChange(of: programContext.returnToMyPrograms) { _, shouldReturn in
             guard shouldReturn else { return }
