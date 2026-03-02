@@ -21,6 +21,17 @@ const parseOptionalNumber = (value) => {
     return Number.isFinite(num) ? num : NaN;
 };
 
+/** Resolve display name "First Last" to a Member. member_name is virtual (first_name + last_name), not a DB column. */
+async function findMemberByDisplayName(displayName) {
+    const trimmed = (displayName || "").trim();
+    if (!trimmed) return null;
+    const parts = trimmed.split(/\s+/);
+    const first_name = parts.shift() || "";
+    const last_name = parts.join(" ").trim();
+    if (!first_name) return null;
+    return Member.findOne({ where: { first_name, last_name } });
+}
+
 // ── Workout Logs ──
 
 async function getWorkoutLogs({ date, programId }, requester) {
@@ -32,7 +43,7 @@ async function getWorkoutLogs({ date, programId }, requester) {
     const logs = await WorkoutLog.findAll({
         where: whereCondition,
         include: [
-            { model: Member, attributes: ['member_name'] },
+            { model: Member, attributes: ["first_name", "last_name"] },
             { model: ProgramWorkout, attributes: ["workout_name"] }
         ]
     });
@@ -73,7 +84,7 @@ async function addWorkoutLog({ member_name, member_id: bodyMemberId, workout_nam
         if (!canLogForAny && member_name !== requester?.member_name) {
             throw new AppError(403, "You can only log your own workouts.");
         }
-        const member = await Member.findOne({ where: { member_name } });
+        const member = await findMemberByDisplayName(member_name);
         if (!member) throw new AppError(404, "Member not found.");
         if (!canLogForAny && member.id !== requester?.id) {
             throw new AppError(403, "You can only log your own workouts.");
@@ -151,7 +162,7 @@ async function updateWorkoutLog({ member_name, workout_name, date, duration, pro
         if (!canEditOther) {
             throw new AppError(403, "You can only update your own logs.");
         }
-        const member = await Member.findOne({ where: { member_name } });
+        const member = await findMemberByDisplayName(member_name);
         if (!member) throw new AppError(404, "Member not found.");
         member_id = member.id;
     }
@@ -190,7 +201,7 @@ async function deleteWorkoutLog({ member_id, member_name, workout_name, date, pr
         if (!canDeleteOther && requester.member_name !== member_name) {
             throw new AppError(403, "You can only delete your own logs.");
         }
-        const member = await Member.findOne({ where: { member_name } });
+        const member = await findMemberByDisplayName(member_name);
         if (!member) throw new AppError(404, "Member not found.");
         whereCondition.member_id = member.id;
     } else {
@@ -210,7 +221,7 @@ async function deleteWorkoutLog({ member_id, member_name, workout_name, date, pr
 }
 
 async function getMemberWorkoutLogs(memberName, requester) {
-    const member = await Member.findOne({ where: { member_name: memberName } });
+    const member = await findMemberByDisplayName(memberName);
     if (!member) throw new AppError(404, "Member not found.");
 
     if (requester.role !== 'admin' && requester.id !== member.id) {
