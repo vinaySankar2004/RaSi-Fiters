@@ -58,6 +58,17 @@ extension ProgramContext {
         }
     }
 
+    /// Call when the user opened the app by tapping a push (so we acknowledge that notification and do not show the in-app modal).
+    @MainActor
+    func acknowledgeNotificationById(_ notificationId: String) {
+        guard let token = authToken, !token.isEmpty, !notificationId.isEmpty else { return }
+        notificationQueue.removeAll { $0.id == notificationId }
+        notificationIds.remove(notificationId)
+        Task {
+            _ = try? await APIClient.shared.acknowledgeNotification(token: token, notificationId: notificationId)
+        }
+    }
+
     @MainActor
     private func enqueueNotification(_ notification: APIClient.NotificationDTO) {
         guard !notificationIds.contains(notification.id) else { return }

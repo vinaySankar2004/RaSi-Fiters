@@ -9,8 +9,9 @@ import SwiftUI
 
 @main
 struct RaSi_Fiters_AppApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var themeManager = ThemeManager()
-    
+
     var body: some Scene {
         WindowGroup {
             AppRootView()

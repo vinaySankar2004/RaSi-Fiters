@@ -11,7 +11,8 @@ const {
     Program,
     ProgramMembership,
     ProgramInvite,
-    Notification
+    Notification,
+    MemberPushToken
 } = require("../models");
 const { AppError } = require("../utils/response");
 const { handleMemberExit } = require("../utils/programMemberships");
@@ -95,6 +96,30 @@ const verifyCredentials = async (member) => {
     return credential;
 };
 
+async function upsertPushToken(memberId, deviceToken, deviceId = null) {
+    const platform = "ios";
+    const existing = await MemberPushToken.findOne({
+        where: { device_token: deviceToken }
+    });
+    const now = new Date();
+    if (existing) {
+        await existing.update({
+            member_id: memberId,
+            device_id: deviceId ?? existing.device_id,
+            updated_at: now
+        });
+        return;
+    }
+    await MemberPushToken.create({
+        member_id: memberId,
+        device_token: deviceToken,
+        platform,
+        device_id: deviceId,
+        created_at: now,
+        updated_at: now
+    });
+}
+
 async function loginLegacy(identifier, password) {
     const member = await resolveMemberByIdentifier(identifier);
     if (!member) throw new AppError(401, "Invalid credentials");
@@ -120,7 +145,7 @@ async function loginLegacy(identifier, password) {
     };
 }
 
-async function loginGlobal(identifier, password) {
+async function loginGlobal(identifier, password, options = {}) {
     const member = await resolveMemberByIdentifier(identifier);
     if (!member) throw new AppError(401, "Invalid credentials");
 
@@ -134,6 +159,11 @@ async function loginGlobal(identifier, password) {
     const payload = buildGlobalPayload(member, globalRole);
     const token = createAccessToken(payload);
     const { rawToken: refreshToken } = await issueRefreshToken(member.id, "global");
+
+    const { push_token: pushToken, device_id: deviceId } = options;
+    if (pushToken && typeof pushToken === "string" && pushToken.trim()) {
+        await upsertPushToken(member.id, pushToken.trim(), deviceId);
+    }
 
     return {
         token,
@@ -377,5 +407,6 @@ module.exports = {
     logout,
     register,
     changePassword,
-    deleteAccount
+    deleteAccount,
+    upsertPushToken
 };

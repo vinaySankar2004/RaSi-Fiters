@@ -246,6 +246,20 @@ CREATE TABLE notification_recipients (
 CREATE INDEX idx_notification_recipients_member_id ON notification_recipients(member_id);
 CREATE INDEX idx_notification_recipients_ack ON notification_recipients(member_id, acknowledged_at);
 
+CREATE TABLE member_push_tokens (
+    id           UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    member_id     UUID NOT NULL
+        REFERENCES members(id) ON DELETE CASCADE,
+    device_token  VARCHAR(512) NOT NULL UNIQUE,
+    platform      VARCHAR(16) NOT NULL DEFAULT 'ios',
+    device_id     VARCHAR(256),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_member_push_tokens_member_id ON member_push_tokens(member_id);
+CREATE INDEX idx_member_push_tokens_platform ON member_push_tokens(platform);
+
 -- ============================================================
 -- SECTION 4: Workouts library + program workouts + logs
 -- ============================================================

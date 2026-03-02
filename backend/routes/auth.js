@@ -19,8 +19,11 @@ router.post("/login", async (req, res) => {
 
 const handleAppLogin = async (req, res) => {
     try {
-        const { identifier, username, password } = req.body;
-        const result = await authService.loginGlobal(identifier || username, password);
+        const { identifier, username, password, push_token, device_id } = req.body;
+        const result = await authService.loginGlobal(identifier || username, password, {
+            push_token,
+            device_id
+        });
         res.json(result);
     } catch (err) {
         if (err instanceof AppError) return res.status(err.statusCode).json({ error: err.message });

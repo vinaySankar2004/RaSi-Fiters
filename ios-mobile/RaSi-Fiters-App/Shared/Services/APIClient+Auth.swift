@@ -46,16 +46,33 @@ extension APIClient {
         return try JSONDecoder().decode(AuthResponse.self, from: data)
     }
 
-    // New global-role-aware login
-    func loginGlobal(identifier: String, password: String) async throws -> AuthResponse {
+    // New global-role-aware login; optional push_token and device_id for push notifications.
+    func loginGlobal(identifier: String, password: String, pushToken: String? = nil, deviceId: String? = nil) async throws -> AuthResponse {
         var request = URLRequest(url: baseURL.appendingPathComponent("auth/login/global"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body = ["identifier": identifier, "password": password]
+        var body: [String: String] = ["identifier": identifier, "password": password]
+        if let pushToken, !pushToken.isEmpty { body["push_token"] = pushToken }
+        if let deviceId, !deviceId.isEmpty { body["device_id"] = deviceId }
         request.httpBody = try JSONEncoder().encode(body)
 
         let data = try await data(for: request)
         return try JSONDecoder().decode(AuthResponse.self, from: data)
+    }
+
+    /// Register the device for push notifications (call when user is already logged in and token is available).
+    func registerDevice(token: String, pushToken: String) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("notifications/device"))
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let body = ["push_token": pushToken]
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (_, response) = try await rawData(for: request)
+        guard 200..<300 ~= response.statusCode else {
+            throw APIError(message: "Failed to register device for push")
+        }
     }
 
     func registerAccount(

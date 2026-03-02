@@ -167,6 +167,8 @@ struct ProgramPickerView: View {
                 ChangePasswordView()
             case .appearance:
                 AppearanceSettingsView()
+            case .notifications:
+                NotificationsSettingsView()
             }
         }
         .alert("Delete Program?", isPresented: $showDeleteConfirmation) {
@@ -360,6 +362,7 @@ private enum AccountDestination: String, Identifiable {
     case profile
     case password
     case appearance
+    case notifications
 
     var id: String { rawValue }
 }
@@ -416,6 +419,18 @@ private struct AccountMenuSheet: View {
                                     color: .appPurple,
                                     title: "Appearance",
                                     subtitle: "Choose light or dark mode"
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                onSelectDestination(.notifications)
+                            } label: {
+                                AccountRow(
+                                    icon: "bell.badge",
+                                    color: .appOrange,
+                                    title: "Notifications",
+                                    subtitle: "Manage push notifications"
                                 )
                             }
                             .buttonStyle(.plain)

@@ -78,6 +78,19 @@ struct ProgramMyAccountSection: View {
                 }
                 .buttonStyle(.plain)
 
+                // Notifications
+                NavigationLink {
+                    NotificationsSettingsView()
+                } label: {
+                    settingsRow(
+                        icon: "bell.badge",
+                        color: .appOrange,
+                        title: "Notifications",
+                        subtitle: "Manage push notifications"
+                    )
+                }
+                .buttonStyle(.plain)
+
                 Link(destination: privacyPolicyURL) {
                     settingsRow(
                         icon: "doc.text",

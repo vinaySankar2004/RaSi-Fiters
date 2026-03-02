@@ -185,4 +185,12 @@ extension ProgramContext {
         }
         return false
     }
+
+    /// Call when device push token is available and user is logged in; registers the token with the backend.
+    func registerPushTokenIfNeeded(_ deviceToken: String) {
+        guard let token = authToken, !token.isEmpty, !deviceToken.isEmpty else { return }
+        Task {
+            try? await APIClient.shared.registerDevice(token: token, pushToken: deviceToken)
+        }
+    }
 }

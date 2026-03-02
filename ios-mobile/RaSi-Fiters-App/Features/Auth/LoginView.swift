@@ -151,7 +151,13 @@ struct LoginView: View {
         defer { isLoading = false }
 
         do {
-            let response = try await APIClient.shared.loginGlobal(identifier: identifier, password: password)
+            let pushToken = UserDefaults.standard.string(forKey: PushTokenNotification.userDefaultsKey)
+            let response = try await APIClient.shared.loginGlobal(
+                identifier: identifier,
+                password: password,
+                pushToken: pushToken,
+                deviceId: nil
+            )
             let role = (response.globalRole ?? "").lowercased()
 
             // Store token and user info in shared context

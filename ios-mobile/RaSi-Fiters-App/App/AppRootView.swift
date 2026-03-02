@@ -50,6 +50,14 @@ struct AppRootView: View {
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: PushTokenNotification.didUpdate)) { notification in
+            guard let token = notification.userInfo?["token"] as? String else { return }
+            programContext.registerPushTokenIfNeeded(token)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: PushNotificationTapped.notificationName)) { notification in
+            guard let notificationId = notification.userInfo?[PushNotificationTapped.notificationIdKey] as? String else { return }
+            programContext.acknowledgeNotificationById(notificationId)
+        }
         .onChange(of: programContext.isUpdateRequired) { _, isRequired in
             if isRequired {
                 programContext.widgetRoute = nil

@@ -1,6 +1,8 @@
 const express = require("express");
 const cors = require("cors");
+// Load .env then .env.local (local overrides); on Render only env vars are set
 require("dotenv").config();
+require("dotenv").config({ path: ".env.local", override: true });
 const { connectDB } = require("./config/database");
 require("./models/index");
 const { errorHandler } = require("./middleware/errorHandler");

@@ -2,6 +2,7 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 const { Notification, NotificationRecipient } = require("../models");
 const { authenticateToken } = require("../middleware/auth");
+const authService = require("../services/authService");
 const { registerNotificationStream, removeNotificationStream } = require("../utils/notificationStreams");
 
 const router = express.Router();
@@ -53,6 +54,20 @@ router.get("/unacknowledged", authenticateToken, async (req, res) => {
     } catch (error) {
         console.error("Error fetching notifications:", error);
         res.status(500).json({ error: "Failed to fetch notifications." });
+    }
+});
+
+router.put("/device", authenticateToken, async (req, res) => {
+    try {
+        const { push_token: pushToken } = req.body;
+        if (!pushToken || typeof pushToken !== "string" || !pushToken.trim()) {
+            return res.status(400).json({ error: "push_token is required." });
+        }
+        await authService.upsertPushToken(req.user.id, pushToken.trim(), req.body.device_id);
+        res.json({ message: "Device registered for push notifications." });
+    } catch (error) {
+        console.error("Error registering device:", error);
+        res.status(500).json({ error: "Failed to register device." });
     }
 });
 

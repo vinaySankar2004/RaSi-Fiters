@@ -5,6 +5,7 @@ const {
     ProgramMembership
 } = require("../models");
 const { sendNotificationToMember } = require("./notificationStreams");
+const { sendPushToMembers } = require("./pushNotifications");
 
 const buildNotificationPayload = (notification) => ({
     id: notification.id,
@@ -59,6 +60,11 @@ const createNotification = async ({
 
     const dispatch = () => {
         uniqueRecipients.forEach((memberId) => sendNotificationToMember(memberId, payload));
+        sendPushToMembers(uniqueRecipients, {
+            id: payload.id,
+            title: payload.title,
+            body: payload.body
+        }).catch((err) => console.error("[push] sendPushToMembers error:", err));
     };
 
     if (transaction && typeof transaction.afterCommit === "function") {
