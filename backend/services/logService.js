@@ -37,13 +37,20 @@ async function getWorkoutLogs({ date, programId }, requester) {
         ]
     });
 
+    let canEditOther = false;
+    if (programId) {
+        canEditOther = await resolveLogPermissions(programId, requester);
+    } else {
+        canEditOther = requester.role === 'admin';
+    }
+
     return logs.map(log => ({
         member_id: log.member_id,
         member_name: log.Member ? log.Member.member_name : null,
         workout_name: log.ProgramWorkout ? log.ProgramWorkout.workout_name : null,
         date: log.log_date,
         duration: log.duration,
-        canEdit: requester.role === 'admin' || log.member_id === requester.id
+        canEdit: canEditOther || log.member_id === requester.id
     }));
 }
 
@@ -140,7 +147,8 @@ async function updateWorkoutLog({ member_name, workout_name, date, duration, pro
     let member_id = requester.id;
 
     if (member_name && member_name !== requester.member_name) {
-        if (requester.role !== 'admin') {
+        const canEditOther = await resolveLogPermissions(program_id, requester);
+        if (!canEditOther) {
             throw new AppError(403, "You can only update your own logs.");
         }
         const member = await Member.findOne({ where: { member_name } });
@@ -178,7 +186,8 @@ async function deleteWorkoutLog({ member_id, member_name, workout_name, date, pr
     if (member_id) {
         whereCondition.member_id = member_id;
     } else if (member_name) {
-        if (requester.role !== 'admin' && requester.member_name !== member_name) {
+        const canDeleteOther = await resolveLogPermissions(program_id, requester);
+        if (!canDeleteOther && requester.member_name !== member_name) {
             throw new AppError(403, "You can only delete your own logs.");
         }
         const member = await Member.findOne({ where: { member_name } });
@@ -191,7 +200,8 @@ async function deleteWorkoutLog({ member_id, member_name, workout_name, date, pr
     const log = await WorkoutLog.findOne({ where: whereCondition });
     if (!log) throw new AppError(404, "Workout log not found.");
 
-    if (requester.role !== 'admin' && log.member_id !== requester.id) {
+    const canDeleteOther = await resolveLogPermissions(program_id, requester);
+    if (!canDeleteOther && log.member_id !== requester.id) {
         throw new AppError(403, "You can only delete your own logs.");
     }
 
