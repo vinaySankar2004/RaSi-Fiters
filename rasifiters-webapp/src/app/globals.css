@@ -79,6 +79,7 @@ body.modal-open .bottom-nav {
 .app-bg {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   background: radial-gradient(1200px 600px at 20% -10%, #ffffff 0%, #f7f7fb 45%, #f1f2f6 100%);
 }
 
@@ -360,6 +361,15 @@ select:-webkit-autofill:focus {
   background-color: var(--rf-input-bg) !important;
   caret-color: var(--rf-text) !important;
   transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Prevent mobile zoom: inputs/selects must be at least 16px on small screens */
+@media (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 .button-primary {

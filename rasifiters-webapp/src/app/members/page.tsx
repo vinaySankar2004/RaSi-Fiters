@@ -665,7 +665,7 @@ function MemberPickerModal({
             className="input-shell w-full rounded-2xl px-4 py-3 text-sm font-medium"
           />
         </div>
-        <div className="mt-4 max-h-72 overflow-auto">
+        <div className="mt-4 max-h-[min(70vh,20rem)] overflow-auto overscroll-contain" style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}>
           {allowNone && (
             <button
               type="button"

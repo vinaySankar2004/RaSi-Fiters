@@ -36,7 +36,7 @@ export function Select({
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    const handler = (event: MouseEvent) => {
+    const handler = (event: PointerEvent) => {
       if (!(event.target instanceof Node)) return;
       const insideWrapper = wrapperRef.current?.contains(event.target) ?? false;
       const insideDropdown = dropdownRef.current?.contains(event.target) ?? false;
@@ -46,8 +46,8 @@ export function Select({
       }
     };
 
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
   }, []);
 
   useEffect(() => {
@@ -97,32 +97,52 @@ export function Select({
 
   const rect = open && wrapperRef.current ? wrapperRef.current.getBoundingClientRect() : null;
 
-  const dropdownPanel = rect && (
+  const placement =
+    rect && typeof window !== "undefined"
+      ? (() => {
+          const GAP = 8;
+          const spaceBelow = window.innerHeight - rect.bottom - GAP;
+          const spaceAbove = rect.top - GAP;
+          const placeAbove = spaceBelow < Math.max(200, spaceAbove);
+          const maxHeight = placeAbove
+            ? Math.min(window.innerHeight * 0.7, spaceAbove - GAP)
+            : Math.min(window.innerHeight * 0.7, spaceBelow - GAP);
+          return { placeAbove, maxHeight };
+        })()
+      : null;
+
+  const dropdownPanel = rect && placement && (
     <div
       ref={dropdownRef}
-      className="fixed z-[100] rounded-2xl border border-rf-border bg-rf-surface text-rf-text shadow-2xl"
+      className="fixed z-[100] flex flex-col rounded-2xl border border-rf-border bg-rf-surface text-rf-text shadow-2xl"
       style={{
         left: rect.left,
-        top: rect.bottom + 8,
+        ...(placement.placeAbove
+          ? { bottom: window.innerHeight - rect.top + 8 }
+          : { top: rect.bottom + 8 }),
         width: rect.width,
-        minWidth: 120
+        minWidth: 120,
+        maxHeight: placement.maxHeight
       }}
     >
       {searchable && (
-        <div className="border-b border-rf-border px-3 py-2">
+        <div className="shrink-0 border-b border-rf-border px-3 py-2">
           <input
             ref={searchRef}
             type="text"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search..."
-            className="w-full bg-transparent text-sm font-medium text-rf-text outline-none placeholder:text-rf-text-muted"
+            className="w-full bg-transparent text-base font-medium text-rf-text outline-none placeholder:text-rf-text-muted sm:text-sm"
           />
         </div>
       )}
       <div
-        className="max-h-[min(16rem,70vh)] touch-pan-y overflow-auto overscroll-contain py-1"
-        style={{ WebkitOverflowScrolling: "touch" }}
+        className="min-h-0 flex-1 touch-pan-y overflow-auto overscroll-contain py-1"
+        style={{
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y"
+        }}
       >
         {filtered.length === 0 ? (
           <p className="px-4 py-3 text-sm text-rf-text-muted">No results</p>

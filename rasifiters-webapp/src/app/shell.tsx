@@ -47,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <NotificationsGate />
 
       {showNav && (
-        <nav className="bottom-nav fixed bottom-6 left-1/2 z-20 w-[min(92vw,520px)] -translate-x-1/2 rounded-3xl bg-white/90 px-4 py-3 shadow-2xl backdrop-blur">
+        <nav className="bottom-nav fixed left-1/2 z-20 w-[min(92vw,520px)] -translate-x-1/2 rounded-3xl bg-white/90 px-4 py-3 shadow-2xl backdrop-blur bottom-[max(1.5rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center justify-between">
             {[
               { href: "/summary", label: "Summary", icon: SummaryIcon },

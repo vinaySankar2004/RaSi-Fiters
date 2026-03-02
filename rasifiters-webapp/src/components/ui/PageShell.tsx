@@ -22,7 +22,7 @@ export function PageShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen px-6 pb-16 pt-10 text-rf-text sm:px-10">
+    <div className="min-h-screen pb-16 pt-10 text-rf-text pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] sm:pl-[max(2.5rem,env(safe-area-inset-left))] sm:pr-[max(2.5rem,env(safe-area-inset-right))]">
       <div className={cn("mx-auto w-full space-y-6", maxWidthMap[maxWidth], className)}>
         {children}
       </div>
