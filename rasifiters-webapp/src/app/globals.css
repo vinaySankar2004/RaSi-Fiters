@@ -363,11 +363,15 @@ select:-webkit-autofill:focus {
   transition: background-color 9999s ease-in-out 0s;
 }
 
-/* Prevent mobile zoom: inputs/selects must be at least 16px on small screens */
+/* Prevent mobile auto-zoom: keep view at 100% scale unless user zooms (mobile only) */
 @media (max-width: 768px) {
+  html {
+    font-size: 16px;
+  }
   input,
   select,
-  textarea {
+  textarea,
+  [contenteditable="true"] {
     font-size: 16px !important;
   }
 }

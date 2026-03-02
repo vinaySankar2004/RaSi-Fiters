@@ -1,5 +1,6 @@
 "use client";
 
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -29,6 +30,7 @@ export function Select({
   className,
   searchable
 }: SelectProps) {
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -62,12 +64,16 @@ export function Select({
       close();
     };
     window.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", close);
+    if (!isMobile) {
+      window.addEventListener("resize", close);
+    }
     return () => {
       window.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", close);
+      if (!isMobile) {
+        window.removeEventListener("resize", close);
+      }
     };
-  }, [open]);
+  }, [open, isMobile]);
 
   useEffect(() => {
     if (!open) return;
@@ -82,10 +88,10 @@ export function Select({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !searchable) return;
+    if (!open || !searchable || isMobile) return;
     const t = setTimeout(() => searchRef.current?.focus(), 100);
     return () => clearTimeout(t);
-  }, [open, searchable]);
+  }, [open, searchable, isMobile]);
 
   const selected = options.find((option) => option.value === value);
 
