@@ -49,7 +49,11 @@ export default function MemberWorkoutsPage() {
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const canViewAny = isGlobalAdmin || program?.my_role === "admin" || program?.my_role === "logger";
   const loggedInUserId = session?.user.id;
-  const canDelete = isGlobalAdmin || memberId === loggedInUserId;
+  const canDelete =
+    isGlobalAdmin ||
+    program?.my_role === "admin" ||
+    program?.my_role === "logger" ||
+    memberId === loggedInUserId;
   const canEdit = canDelete;
 
   const [sortField, setSortField] = useState("date");

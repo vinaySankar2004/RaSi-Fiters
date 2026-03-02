@@ -44,16 +44,25 @@ export default function MembersPage() {
 
   const isGlobalAdmin = session?.user.globalRole === "global_admin";
   const isProgramAdmin = program?.my_role === "admin" || isGlobalAdmin;
+  const isLogger = program?.my_role === "logger";
   const canInvite = isProgramAdmin;
   const canViewAs = isProgramAdmin;
+  const canViewAsLogger = isLogger;
   const loggedInUserId = session?.user.id;
 
   const [showMemberPicker, setShowMemberPicker] = useState(false);
   const [adminSelectedMember, setAdminSelectedMember] = useState<Member | null>(null);
+  const [loggerSelectedMember, setLoggerSelectedMember] = useState<Member | null>(null);
+  const [showLoggerMemberPicker, setShowLoggerMemberPicker] = useState(false);
 
   const viewAsStorageKey = useMemo(() => {
     if (!programId || !loggedInUserId) return "";
     return `rf:members:view-as:${programId}:${loggedInUserId}`;
+  }, [programId, loggedInUserId]);
+
+  const loggerViewAsStorageKey = useMemo(() => {
+    if (!programId || !loggedInUserId) return "";
+    return `rf:members:view-as-logger:${programId}:${loggedInUserId}`;
   }, [programId, loggedInUserId]);
 
   const membersQuery = useQuery({
@@ -96,6 +105,29 @@ export default function MembersPage() {
     }
   }, [canViewAs, isGlobalAdmin, loggedInUserId, membersQuery.data, adminSelectedMember, viewAsStorageKey]);
 
+  useEffect(() => {
+    if (!canViewAsLogger) return;
+    if (!loggerViewAsStorageKey) return;
+    const stored = sessionStorage.getItem(loggerViewAsStorageKey);
+    if (!stored) return;
+    if (!membersQuery.data) return;
+    if (loggerSelectedMember?.id === stored) return;
+    const match = membersQuery.data.find((member) => member.id === stored);
+    if (match) setLoggerSelectedMember(match);
+  }, [canViewAsLogger, loggerViewAsStorageKey, membersQuery.data, loggerSelectedMember?.id]);
+
+  useEffect(() => {
+    if (!canViewAsLogger) return;
+    if (!loggedInUserId) return;
+    if (loggerSelectedMember) return;
+    if (loggerViewAsStorageKey && sessionStorage.getItem(loggerViewAsStorageKey)) return;
+    const match = membersQuery.data?.find((member) => member.id === loggedInUserId);
+    if (match) {
+      setLoggerSelectedMember(match);
+      if (loggerViewAsStorageKey) sessionStorage.setItem(loggerViewAsStorageKey, match.id);
+    }
+  }, [canViewAsLogger, loggedInUserId, membersQuery.data, loggerSelectedMember, loggerViewAsStorageKey]);
+
   const selectedMember: Member | null = useMemo(() => {
     if (canViewAs) return adminSelectedMember;
     if (!loggedInUserId) return null;
@@ -107,6 +139,11 @@ export default function MembersPage() {
 
   const selectedMemberId = selectedMember?.id ?? "";
 
+  const overviewMemberId = canViewAsLogger ? (loggedInUserId ?? "") : selectedMemberId;
+  const logsMemberId = canViewAsLogger
+    ? (loggerSelectedMember?.id ?? loggedInUserId ?? "")
+    : selectedMemberId;
+
   const metricsPreviewQuery = useQuery({
     queryKey: ["members", "metrics", programId, "preview"],
     queryFn: () =>
@@ -114,50 +151,50 @@ export default function MembersPage() {
         sort: "workouts",
         direction: "desc"
       }),
-    enabled: !!token && !!programId && canViewAs
+    enabled: !!token && !!programId && isProgramAdmin
   });
 
   const memberOverviewQuery = useQuery({
-    queryKey: ["members", "overview", programId, selectedMemberId],
+    queryKey: ["members", "overview", programId, overviewMemberId],
     queryFn: () =>
       fetchMemberMetrics(token, programId, {
-        memberId: selectedMemberId
+        memberId: overviewMemberId
       }),
-    enabled: !!token && !!programId && !!selectedMemberId
+    enabled: !!token && !!programId && !!overviewMemberId
   });
 
   const memberHistoryQuery = useQuery({
-    queryKey: ["members", "history", programId, selectedMemberId],
-    queryFn: () => fetchMemberHistory(token, programId, selectedMemberId, "week"),
-    enabled: !!token && !!programId && !!selectedMemberId
+    queryKey: ["members", "history", programId, overviewMemberId],
+    queryFn: () => fetchMemberHistory(token, programId, overviewMemberId, "week"),
+    enabled: !!token && !!programId && !!overviewMemberId
   });
 
   const memberStreakQuery = useQuery({
-    queryKey: ["members", "streaks", programId, selectedMemberId],
-    queryFn: () => fetchMemberStreaks(token, programId, selectedMemberId),
-    enabled: !!token && !!programId && !!selectedMemberId
+    queryKey: ["members", "streaks", programId, overviewMemberId],
+    queryFn: () => fetchMemberStreaks(token, programId, overviewMemberId),
+    enabled: !!token && !!programId && !!overviewMemberId
   });
 
   const memberRecentQuery = useQuery({
-    queryKey: ["members", "recent", programId, selectedMemberId],
+    queryKey: ["members", "recent", programId, logsMemberId],
     queryFn: () =>
-      fetchMemberRecentWorkouts(token, programId, selectedMemberId, {
+      fetchMemberRecentWorkouts(token, programId, logsMemberId, {
         limit: 10,
         sortBy: "date",
         sortDir: "desc"
       }),
-    enabled: !!token && !!programId && !!selectedMemberId
+    enabled: !!token && !!programId && !!logsMemberId
   });
 
   const memberHealthQuery = useQuery({
-    queryKey: ["members", "health", programId, selectedMemberId],
+    queryKey: ["members", "health", programId, logsMemberId],
     queryFn: () =>
-      fetchMemberHealthLogs(token, programId, selectedMemberId, {
+      fetchMemberHealthLogs(token, programId, logsMemberId, {
         limit: 10,
         sortBy: "date",
         sortDir: "desc"
       }),
-    enabled: !!token && !!programId && !!selectedMemberId
+    enabled: !!token && !!programId && !!logsMemberId
   });
 
   const memberOverview = memberOverviewQuery.data?.members?.[0];
@@ -168,6 +205,20 @@ export default function MembersPage() {
     if (isGlobalAdmin) return "None";
     return session?.user.memberName ?? "Member";
   }, [canViewAs, adminSelectedMember, isGlobalAdmin, session?.user.memberName]);
+
+  const loggerViewAsLabel = useMemo(() => {
+    if (!canViewAsLogger) return "";
+    return loggerSelectedMember?.member_name ?? session?.user.memberName ?? "Member";
+  }, [canViewAsLogger, loggerSelectedMember, session?.user.memberName]);
+
+  const logsSelectedMember: Member | null = useMemo(() => {
+    if (canViewAsLogger) {
+      if (loggerSelectedMember) return loggerSelectedMember;
+      if (loggedInUserId) return { id: loggedInUserId, member_name: session?.user.memberName ?? "Member" };
+      return null;
+    }
+    return selectedMember;
+  }, [canViewAsLogger, loggerSelectedMember, loggedInUserId, session?.user.memberName, selectedMember]);
 
   return (
     <PageShell>
@@ -199,7 +250,7 @@ export default function MembersPage() {
         </div>
       </header>
 
-      {canViewAs && (
+      {isProgramAdmin && (
         <button
           type="button"
           onClick={() => router.push("/members/metrics")}
@@ -248,25 +299,13 @@ export default function MembersPage() {
         </GlassCard>
       )}
 
-      {selectedMemberId && (
+      {selectedMemberId && canViewAs && (
         <div className="grid gap-5">
-          {canViewAs ? (
-            <MemberOverviewCard
-              metric={memberOverview}
-              programStart={program?.start_date}
-              programEnd={program?.end_date}
-            />
-          ) : (
-            <div className="grid gap-5 md:grid-cols-2">
-              <MemberOverviewCard
-                metric={memberOverview}
-                programStart={program?.start_date}
-                programEnd={program?.end_date}
-              />
-              {memberOverview && <MemberMetricsSingleCard metric={memberOverview} />}
-            </div>
-          )}
-
+          <MemberOverviewCard
+            metric={memberOverview}
+            programStart={program?.start_date}
+            programEnd={program?.end_date}
+          />
           <div className="grid gap-5 md:grid-cols-2">
             <MemberHistoryCard
               points={memberHistoryQuery.data?.buckets ?? []}
@@ -280,7 +319,6 @@ export default function MembersPage() {
               onClick={() => router.push(`/members/streaks?memberId=${selectedMemberId}&name=${encodeURIComponent(selectedMember?.member_name ?? "")}`)}
             />
           </div>
-
           <div className="grid gap-5 md:grid-cols-2">
             <MemberRecentCard
               items={memberRecentQuery.data?.items ?? []}
@@ -289,6 +327,90 @@ export default function MembersPage() {
             <MemberHealthCard
               items={memberHealthQuery.data?.items ?? []}
               onClick={() => router.push(`/members/health?memberId=${selectedMemberId}&name=${encodeURIComponent(selectedMember?.member_name ?? "")}`)}
+            />
+          </div>
+        </div>
+      )}
+
+      {canViewAsLogger && overviewMemberId && (
+        <>
+          <div className="grid gap-5">
+            <MemberOverviewCard
+              metric={memberOverview}
+              programStart={program?.start_date}
+              programEnd={program?.end_date}
+            />
+            <div className="grid gap-5 md:grid-cols-2">
+              <MemberHistoryCard
+                points={memberHistoryQuery.data?.buckets ?? []}
+                label={memberHistoryQuery.data?.label ?? ""}
+                dailyAverage={memberHistoryQuery.data?.daily_average ?? 0}
+                onClick={() => router.push(`/members/history?memberId=${overviewMemberId}&name=${encodeURIComponent(session?.user.memberName ?? "")}`)}
+              />
+              <MemberStreakCard
+                current={memberStreakQuery.data?.currentStreakDays ?? 0}
+                longest={memberStreakQuery.data?.longestStreakDays ?? 0}
+                onClick={() => router.push(`/members/streaks?memberId=${overviewMemberId}&name=${encodeURIComponent(session?.user.memberName ?? "")}`)}
+              />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowLoggerMemberPicker(true)}
+            className="glass-card flex items-center gap-4 rounded-3xl px-5 py-4"
+          >
+            <p className="text-sm font-semibold text-rf-text">View as</p>
+            <span className="ml-auto text-sm font-semibold text-rf-text-muted">{loggerViewAsLabel}</span>
+            <span className="text-xs text-rf-text-muted">⌄</span>
+          </button>
+
+          {logsMemberId && (
+            <div className="grid gap-5 md:grid-cols-2">
+              <MemberRecentCard
+                items={memberRecentQuery.data?.items ?? []}
+                onClick={() => router.push(`/members/workouts?memberId=${logsMemberId}&name=${encodeURIComponent(logsSelectedMember?.member_name ?? "")}`)}
+              />
+              <MemberHealthCard
+                items={memberHealthQuery.data?.items ?? []}
+                onClick={() => router.push(`/members/health?memberId=${logsMemberId}&name=${encodeURIComponent(logsSelectedMember?.member_name ?? "")}`)}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {!canViewAs && !canViewAsLogger && overviewMemberId && (
+        <div className="grid gap-5">
+          <div className="grid gap-5 md:grid-cols-2">
+            <MemberOverviewCard
+              metric={memberOverview}
+              programStart={program?.start_date}
+              programEnd={program?.end_date}
+            />
+            {memberOverview && <MemberMetricsSingleCard metric={memberOverview} />}
+          </div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <MemberHistoryCard
+              points={memberHistoryQuery.data?.buckets ?? []}
+              label={memberHistoryQuery.data?.label ?? ""}
+              dailyAverage={memberHistoryQuery.data?.daily_average ?? 0}
+              onClick={() => router.push(`/members/history?memberId=${overviewMemberId}&name=${encodeURIComponent(session?.user.memberName ?? "")}`)}
+            />
+            <MemberStreakCard
+              current={memberStreakQuery.data?.currentStreakDays ?? 0}
+              longest={memberStreakQuery.data?.longestStreakDays ?? 0}
+              onClick={() => router.push(`/members/streaks?memberId=${overviewMemberId}&name=${encodeURIComponent(session?.user.memberName ?? "")}`)}
+            />
+          </div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <MemberRecentCard
+              items={memberRecentQuery.data?.items ?? []}
+              onClick={() => router.push(`/members/workouts?memberId=${logsMemberId}&name=${encodeURIComponent(logsSelectedMember?.member_name ?? "")}`)}
+            />
+            <MemberHealthCard
+              items={memberHealthQuery.data?.items ?? []}
+              onClick={() => router.push(`/members/health?memberId=${logsMemberId}&name=${encodeURIComponent(logsSelectedMember?.member_name ?? "")}`)}
             />
           </div>
         </div>
@@ -305,6 +427,22 @@ export default function MembersPage() {
             setShowMemberPicker(false);
             if (viewAsStorageKey) {
               sessionStorage.setItem(viewAsStorageKey, member ? member.id : "none");
+            }
+          }}
+        />
+      )}
+
+      {showLoggerMemberPicker && (
+        <MemberPickerModal
+          members={membersQuery.data ?? []}
+          selected={loggerSelectedMember}
+          allowNone={false}
+          onClose={() => setShowLoggerMemberPicker(false)}
+          onSelect={(member) => {
+            setLoggerSelectedMember(member);
+            setShowLoggerMemberPicker(false);
+            if (loggerViewAsStorageKey && member) {
+              sessionStorage.setItem(loggerViewAsStorageKey, member.id);
             }
           }}
         />
