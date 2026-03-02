@@ -1,5 +1,6 @@
 "use client";
 
+import { SelectMobile } from "@/components/SelectMobile";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -31,6 +32,45 @@ export function Select({
   searchable
 }: SelectProps) {
   const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <SelectMobile
+        label={label}
+        value={value}
+        options={options}
+        onChange={onChange}
+        disabled={disabled}
+        placeholder={placeholder}
+        className={className}
+        searchable={searchable}
+      />
+    );
+  }
+  return (
+    <SelectDesktop
+      label={label}
+      value={value}
+      options={options}
+      onChange={onChange}
+      disabled={disabled}
+      placeholder={placeholder}
+      className={className}
+      searchable={searchable}
+    />
+  );
+}
+
+function SelectDesktop({
+  label,
+  value,
+  options,
+  onChange,
+  disabled,
+  placeholder = "Select option",
+  className,
+  searchable
+}: SelectProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -64,16 +104,12 @@ export function Select({
       close();
     };
     window.addEventListener("scroll", handleScroll, true);
-    if (!isMobile) {
-      window.addEventListener("resize", close);
-    }
+    window.addEventListener("resize", close);
     return () => {
       window.removeEventListener("scroll", handleScroll, true);
-      if (!isMobile) {
-        window.removeEventListener("resize", close);
-      }
+      window.removeEventListener("resize", close);
     };
-  }, [open, isMobile]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -88,10 +124,10 @@ export function Select({
   }, [open]);
 
   useEffect(() => {
-    if (!open || !searchable || isMobile) return;
+    if (!open || !searchable) return;
     const t = setTimeout(() => searchRef.current?.focus(), 100);
     return () => clearTimeout(t);
-  }, [open, searchable, isMobile]);
+  }, [open, searchable]);
 
   const selected = options.find((option) => option.value === value);
 
