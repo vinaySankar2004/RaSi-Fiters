@@ -82,9 +82,9 @@ export function Select({
   }, [open]);
 
   useEffect(() => {
-    if (open && searchable) {
-      requestAnimationFrame(() => searchRef.current?.focus());
-    }
+    if (!open || !searchable) return;
+    const t = setTimeout(() => searchRef.current?.focus(), 100);
+    return () => clearTimeout(t);
   }, [open, searchable]);
 
   const selected = options.find((option) => option.value === value);
@@ -132,6 +132,8 @@ export function Select({
             type="text"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            onPointerDown={(e) => e.currentTarget.focus()}
+            inputMode="search"
             placeholder="Search..."
             className="w-full bg-transparent text-base font-medium text-rf-text outline-none placeholder:text-rf-text-muted sm:text-sm"
           />
