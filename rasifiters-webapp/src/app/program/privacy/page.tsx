@@ -115,7 +115,7 @@ export default function PrivacyPolicyPage() {
 
         <div>
           <p className="text-base font-semibold text-rf-text">Children&apos;s privacy</p>
-          <p className="mt-2">RaSi Fiters is not intended for children under 13.</p>
+          <p className="mt-2">RaSi Fiters is not intended for children under 4.</p>
         </div>
 
         <div>
