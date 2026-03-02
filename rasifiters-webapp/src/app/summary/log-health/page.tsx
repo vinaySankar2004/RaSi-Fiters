@@ -40,6 +40,7 @@ export default function LogHealthPage() {
       />
       <div className="mt-6">
         <LogDailyHealthForm
+          variant="page"
           canSelectAnyMember={canLogForAny}
           programId={programId}
           token={token}

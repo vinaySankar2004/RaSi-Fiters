@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchProgramMembers } from "@/lib/api/programs";
 import { Select } from "@/components/Select";
+import { Input } from "@/components/ui/Input";
 
 export function LogDailyHealthForm({
   canSelectAnyMember,
@@ -12,7 +13,8 @@ export function LogDailyHealthForm({
   onClose,
   onSubmit,
   isSaving,
-  errorMessage
+  errorMessage,
+  variant = "modal"
 }: {
   canSelectAnyMember: boolean;
   programId: string;
@@ -27,6 +29,7 @@ export function LogDailyHealthForm({
   }) => void;
   isSaving: boolean;
   errorMessage: string | null;
+  variant?: "modal" | "page";
 }) {
   const [members, setMembers] = useState<{ id: string; member_name: string }[]>([]);
   const [memberId, setMemberId] = useState("");
@@ -72,24 +75,9 @@ export function LogDailyHealthForm({
 
   const canSubmit = hasMetric && sleepValid && (!canSelectAnyMember || memberId);
 
-  return (
-    <div className="modal-surface w-full max-w-lg rounded-3xl p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-rf-text">Log daily health</h2>
-          <p className="mt-1 text-sm text-rf-text-muted">Track sleep hours and diet quality for the day.</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full border border-transparent bg-rf-surface-muted px-3 py-1 text-xs font-semibold text-rf-text-muted transition hover:bg-rf-surface"
-          aria-label="Close form"
-        >
-          Close
-        </button>
-      </div>
-
-      <div className="mt-4 space-y-4">
+  const fields = (
+    <>
+      <div className={variant === "modal" ? "mt-4 space-y-4" : "space-y-4"}>
         {canSelectAnyMember ? (
           <Select
             label="Member"
@@ -106,15 +94,12 @@ export function LogDailyHealthForm({
           </div>
         )}
 
-        <div>
-          <label className="text-sm font-semibold text-rf-text">Date</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-            className="input-shell mt-2 w-full rounded-2xl px-4 py-3 text-sm font-medium"
-          />
-        </div>
+        <Input
+          type="date"
+          label="Date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
 
         <div>
           <label className="text-sm font-semibold text-rf-text">Sleep time</label>
@@ -171,6 +156,31 @@ export function LogDailyHealthForm({
       >
         {isSaving ? "Saving…" : "Save daily log"}
       </button>
+    </>
+  );
+
+  if (variant === "page") {
+    return <div className="space-y-4">{fields}</div>;
+  }
+
+  return (
+    <div className="modal-surface w-full max-w-lg rounded-3xl p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-rf-text">Log daily health</h2>
+          <p className="mt-1 text-sm text-rf-text-muted">Track sleep hours and diet quality for the day.</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full border border-transparent bg-rf-surface-muted px-3 py-1 text-xs font-semibold text-rf-text-muted transition hover:bg-rf-surface"
+          aria-label="Close form"
+        >
+          Close
+        </button>
+      </div>
+
+      {fields}
     </div>
   );
 }

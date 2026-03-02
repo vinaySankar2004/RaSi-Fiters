@@ -41,6 +41,7 @@ export default function LogWorkoutPage() {
       />
       <div className="mt-6">
         <LogWorkoutForm
+          variant="page"
           canSelectAnyMember={canLogForAny}
           programId={programId}
           token={token}
