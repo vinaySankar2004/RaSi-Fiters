@@ -10,7 +10,11 @@ function getProvider() {
     const bundleId = process.env.APNS_BUNDLE_ID;
     const keyPath = process.env.APNS_KEY_PATH;
     const keyContent = process.env.APNS_KEY;
-    const production = process.env.APNS_PRODUCTION === "true" || process.env.NODE_ENV === "production";
+    const explicitProduction = process.env.APNS_PRODUCTION;
+    const production =
+        explicitProduction !== undefined && explicitProduction !== ""
+            ? process.env.APNS_PRODUCTION === "true"
+            : process.env.NODE_ENV === "production";
 
     if (!keyId || !teamId || !bundleId) return null;
     const key = keyPath || (keyContent ? Buffer.from(keyContent, "base64") : null);
@@ -38,13 +42,19 @@ function getProvider() {
 async function sendPushToMembers(memberIds, payload) {
     if (!memberIds || memberIds.length === 0) return;
     const apnProvider = getProvider();
-    if (!apnProvider) return;
+    if (!apnProvider) {
+        console.warn("[push] APNs not configured; skipping.");
+        return;
+    }
 
     const tokens = await MemberPushToken.findAll({
         where: { member_id: memberIds, platform: "ios" },
         attributes: ["id", "device_token"]
     });
-    if (tokens.length === 0) return;
+    if (tokens.length === 0) {
+        console.warn("[push] No device tokens for", memberIds.length, "recipients.");
+        return;
+    }
 
     const bundleId = process.env.APNS_BUNDLE_ID;
     const note = new apn.Notification();
@@ -61,13 +71,14 @@ async function sendPushToMembers(memberIds, payload) {
     const results = await apnProvider.send(note, deviceTokens);
 
     if (results && results.sent && results.sent.length > 0) {
-        // Optional: log sent count
+        console.log("[push] Sent to", results.sent.length, "device(s).");
     }
     if (results && results.failed && results.failed.length > 0) {
         const invalidTokens = new Set();
         for (const fail of results.failed) {
             const status = fail.status;
             const reason = fail.response?.reason;
+            console.warn("[push] APNs delivery failed:", { status, reason, device: fail.device ? "(present)" : "(none)" });
             if (status === 410 || reason === "BadDeviceToken" || reason === "Unregistered" || reason === "DeviceTokenNotForTopic") {
                 if (fail.device) invalidTokens.add(fail.device);
             }
