@@ -69,6 +69,13 @@ extension ProgramContext {
         }
     }
 
+    /// Call when the user has disabled notifications in system settings; removes this device from the backend so we stop sending push.
+    @MainActor
+    func deregisterPushTokenIfDenied(deviceToken: String?) async {
+        guard let token = authToken, !token.isEmpty else { return }
+        _ = try? await APIClient.shared.deregisterDevice(token: token, pushToken: deviceToken)
+    }
+
     @MainActor
     private func enqueueNotification(_ notification: APIClient.NotificationDTO) {
         guard !notificationIds.contains(notification.id) else { return }

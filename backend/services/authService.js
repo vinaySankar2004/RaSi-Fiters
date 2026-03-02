@@ -120,6 +120,14 @@ async function upsertPushToken(memberId, deviceToken, deviceId = null) {
     });
 }
 
+async function removePushToken(memberId, deviceToken = null) {
+    const where = { member_id: memberId };
+    if (deviceToken && typeof deviceToken === "string" && deviceToken.trim()) {
+        where.device_token = deviceToken.trim();
+    }
+    await MemberPushToken.destroy({ where });
+}
+
 async function loginLegacy(identifier, password) {
     const member = await resolveMemberByIdentifier(identifier);
     if (!member) throw new AppError(401, "Invalid credentials");
@@ -408,5 +416,6 @@ module.exports = {
     register,
     changePassword,
     deleteAccount,
-    upsertPushToken
+    upsertPushToken,
+    removePushToken
 };

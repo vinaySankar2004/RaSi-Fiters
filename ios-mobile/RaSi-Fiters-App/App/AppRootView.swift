@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 struct AppRootView: View {
     @StateObject private var programContext = ProgramContext()
@@ -70,6 +71,11 @@ struct AppRootView: View {
                 await programContext.refreshSessionIfNeeded()
                 if programContext.authToken != nil {
                     programContext.startNotificationStreamIfNeeded()
+                    let settings = await UNUserNotificationCenter.current().notificationSettings()
+                    if settings.authorizationStatus == .denied {
+                        let storedToken = UserDefaults.standard.string(forKey: PushTokenNotification.userDefaultsKey)
+                        await programContext.deregisterPushTokenIfDenied(deviceToken: storedToken)
+                    }
                 }
             }
         }

@@ -4,6 +4,7 @@ const { Notification, NotificationRecipient } = require("../models");
 const { authenticateToken } = require("../middleware/auth");
 const authService = require("../services/authService");
 const { registerNotificationStream, removeNotificationStream } = require("../utils/notificationStreams");
+const { createNotification, getMemberIdsWithPushTokens } = require("../utils/notifications");
 
 const router = express.Router();
 
@@ -68,6 +69,53 @@ router.put("/device", authenticateToken, async (req, res) => {
     } catch (error) {
         console.error("Error registering device:", error);
         res.status(500).json({ error: "Failed to register device." });
+    }
+});
+
+router.delete("/device", authenticateToken, async (req, res) => {
+    try {
+        const pushToken = req.body?.push_token != null ? req.body.push_token : null;
+        await authService.removePushToken(req.user.id, pushToken);
+        res.json({ message: "Device unregistered from push notifications." });
+    } catch (error) {
+        console.error("Error unregistering device:", error);
+        res.status(500).json({ error: "Failed to unregister device." });
+    }
+});
+
+router.post("/broadcast", authenticateToken, async (req, res) => {
+    try {
+        if (req.user.global_role !== "global_admin") {
+            return res.status(403).json({ error: "Access denied. Global admin only." });
+        }
+        const { title, body, recipient_ids: recipientIds } = req.body;
+        if (!title || typeof title !== "string" || !title.trim()) {
+            return res.status(400).json({ error: "title is required." });
+        }
+        if (!body || typeof body !== "string" || !body.trim()) {
+            return res.status(400).json({ error: "body is required." });
+        }
+        let memberIds = Array.isArray(recipientIds) ? recipientIds.filter(Boolean) : null;
+        if (!memberIds || memberIds.length === 0) {
+            memberIds = await getMemberIdsWithPushTokens();
+        }
+        if (memberIds.length === 0) {
+            return res.status(200).json({ message: "No recipients with push tokens; nothing sent." });
+        }
+        const notification = await createNotification({
+            type: "app.broadcast",
+            title: title.trim(),
+            body: body.trim(),
+            recipientIds: memberIds
+        });
+        res.status(201).json({
+            message: "Broadcast sent.",
+            notification_id: notification?.id,
+            recipient_count: memberIds.length
+        });
+    } catch (error) {
+        console.error("Error sending broadcast:", error);
+        res.status(500).json({ error: "Failed to send broadcast." });
     }
 });
 

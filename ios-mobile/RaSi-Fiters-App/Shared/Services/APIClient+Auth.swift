@@ -75,6 +75,21 @@ extension APIClient {
         }
     }
 
+    /// Unregister the device from push notifications (e.g. when user disables notifications in system settings).
+    func deregisterDevice(token: String, pushToken: String?) async throws {
+        var request = URLRequest(url: baseURL.appendingPathComponent("notifications/device"))
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let pushToken, !pushToken.isEmpty {
+            request.httpBody = try JSONEncoder().encode(["push_token": pushToken])
+        }
+        let (_, response) = try await rawData(for: request)
+        guard 200..<300 ~= response.statusCode else {
+            throw APIError(message: "Failed to unregister device for push")
+        }
+    }
+
     func registerAccount(
         firstName: String,
         lastName: String,

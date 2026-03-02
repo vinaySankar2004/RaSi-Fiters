@@ -1,8 +1,8 @@
-const { Op } = require("sequelize");
 const {
     Notification,
     NotificationRecipient,
-    ProgramMembership
+    ProgramMembership,
+    MemberPushToken
 } = require("../models");
 const { sendNotificationToMember } = require("./notificationStreams");
 const { sendPushToMembers } = require("./pushNotifications");
@@ -24,6 +24,15 @@ const getActiveProgramMemberIds = async (programId, transaction) => {
         transaction
     });
     return memberships.map((membership) => membership.member_id);
+};
+
+/** Returns all member IDs that have at least one device in member_push_tokens (for broadcast). */
+const getMemberIdsWithPushTokens = async () => {
+    const rows = await MemberPushToken.findAll({
+        attributes: ["member_id"],
+        raw: true
+    });
+    return [...new Set(rows.map((r) => r.member_id))];
 };
 
 const createNotification = async ({
@@ -79,5 +88,6 @@ const createNotification = async ({
 module.exports = {
     buildNotificationPayload,
     getActiveProgramMemberIds,
+    getMemberIdsWithPushTokens,
     createNotification
 };
