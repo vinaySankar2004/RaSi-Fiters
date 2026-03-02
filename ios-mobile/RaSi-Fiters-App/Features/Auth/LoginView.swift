@@ -10,8 +10,6 @@ struct LoginView: View {
     @State private var alertMessage: String?
     @State private var isShowingAlert: Bool = false
     @State private var navigateToProgramPicker: Bool = false
-    // swiftlint:disable:next force_unwrapping
-    private static let privacyPolicyURL = URL(string: "https://vinaysankar2004.github.io/RaSi-Fiters/")!
 
     var body: some View {
         ZStack {
@@ -99,7 +97,7 @@ struct LoginView: View {
                         .foregroundColor(Color(.secondaryLabel))
                         .frame(maxWidth: .infinity, alignment: .center)
 
-                    Link("Privacy Policy", destination: Self.privacyPolicyURL)
+                    Link("Privacy Policy", destination: APIConfig.privacyPolicyURL)
                         .font(.footnote.weight(.semibold))
                         .foregroundColor(.appOrange)
                 }

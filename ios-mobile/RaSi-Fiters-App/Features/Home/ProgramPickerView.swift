@@ -375,8 +375,6 @@ private struct AccountMenuSheet: View {
     let onSelectDestination: (AccountDestination) -> Void
     let onSignOut: () -> Void
 
-    private let privacyPolicyURL = URL(string: "https://vinaysankar2004.github.io/RaSi-Fiters/")!
-
     var body: some View {
         NavigationStack {
             ZStack {
@@ -437,13 +435,26 @@ private struct AccountMenuSheet: View {
 
                             Button {
                                 dismiss()
-                                openURL(privacyPolicyURL)
+                                openURL(APIConfig.privacyPolicyURL)
                             } label: {
                                 AccountRow(
                                     icon: "doc.text",
                                     color: .appOrange,
                                     title: "Privacy Policy",
                                     subtitle: "Learn how we handle your data"
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                dismiss()
+                                openURL(APIConfig.supportURL)
+                            } label: {
+                                AccountRow(
+                                    icon: "questionmark.circle",
+                                    color: .appOrange,
+                                    title: "Support",
+                                    subtitle: "Get help or contact us"
                                 )
                             }
                             .buttonStyle(.plain)

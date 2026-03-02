@@ -17,8 +17,6 @@ struct CreateAccountView: View {
     @State private var alertMessage: String?
     @State private var isShowingAlert: Bool = false
     @State private var navigateToProgramPicker: Bool = false
-    // swiftlint:disable:next force_unwrapping
-    private static let privacyPolicyURL = URL(string: "https://vinaysankar2004.github.io/RaSi-Fiters/")!
     private let genderOptions = ["Female", "Male", "Non-binary", "Prefer not to say"]
 
     var body: some View {
@@ -115,7 +113,7 @@ struct CreateAccountView: View {
                             .font(.footnote)
                             .foregroundColor(Color(.secondaryLabel))
 
-                        Link("Privacy Policy", destination: Self.privacyPolicyURL)
+                        Link("Privacy Policy", destination: APIConfig.privacyPolicyURL)
                             .font(.footnote.weight(.semibold))
                             .foregroundColor(.appOrange)
                     }

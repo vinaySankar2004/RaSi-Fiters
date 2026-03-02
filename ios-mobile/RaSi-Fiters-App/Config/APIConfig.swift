@@ -12,6 +12,11 @@ enum APIConfig {
 
     static let appStoreURL = URL(string: "https://apps.apple.com/ca/app/rasi-fiters/id6758078961")!
 
+    // Web app base URL for public pages (privacy, support). Used by iOS to open in browser.
+    static let webAppBaseURL = URL(string: "https://rasifiters.com")!
+    static var privacyPolicyURL: URL { webAppBaseURL.appendingPathComponent("privacy-policy") }
+    static var supportURL: URL { webAppBaseURL.appendingPathComponent("support") }
+
     // Active base URL; debug uses local endpoints, release uses Render.
     static var activeBaseURL: URL {
         #if DEBUG

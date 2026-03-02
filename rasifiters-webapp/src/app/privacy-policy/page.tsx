@@ -1,31 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth/auth-provider";
-import { useActiveProgram } from "@/lib/use-active-program";
+import Link from "next/link";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { GlassCard } from "@/components/ui/GlassCard";
 
-export default function PrivacyPolicyPage() {
-  const router = useRouter();
-  const { session, isBootstrapping } = useAuth();
-  const program = useActiveProgram();
-  const fallbackHref = program?.id ? "/program" : "/programs";
-
-  useEffect(() => {
-    if (!isBootstrapping && !session?.token) {
-      router.push("/login");
-    }
-  }, [isBootstrapping, session?.token, router]);
-
+export default function PublicPrivacyPolicyPage() {
   return (
     <PageShell maxWidth="3xl">
       <PageHeader
         title="Privacy Policy"
         subtitle="Effective date: 2026-03-02"
-        backHref={fallbackHref}
+        actions={
+          <Link
+            href="/support"
+            className="text-sm font-semibold text-rf-accent transition hover:text-rf-accent-strong"
+          >
+            Support
+          </Link>
+        }
       />
 
       <GlassCard padding="lg" className="space-y-6 text-sm text-rf-text-muted">
