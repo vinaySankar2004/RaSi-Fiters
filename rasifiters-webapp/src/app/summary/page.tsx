@@ -16,8 +16,10 @@ import {
   ActivityTimelinePoint,
   WorkoutType
 } from "@/lib/api/summary";
-import { addDailyHealthLog, addWorkoutLog } from "@/lib/api/logs";
+import { addDailyHealthLog, addWorkoutLog, addWorkoutLogsBatch, BulkRowError, BulkWorkoutEntry } from "@/lib/api/logs";
+import { ApiError } from "@/lib/api/client";
 import { LogWorkoutForm } from "@/components/forms/LogWorkoutForm";
+import { BulkLogWorkoutForm } from "@/components/forms/BulkLogWorkoutForm";
 import { LogDailyHealthForm } from "@/components/forms/LogDailyHealthForm";
 import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
@@ -43,6 +45,7 @@ export default function SummaryPage() {
   const isMobile = useIsMobile();
   const summaryPeriod: PeriodKey = "week";
   const [showWorkoutForm, setShowWorkoutForm] = useState(false);
+  const [showBulkForm, setShowBulkForm] = useState(false);
   const [showHealthForm, setShowHealthForm] = useState(false);
   const canLogForAny =
     session?.user.globalRole === "global_admin" ||
@@ -116,6 +119,15 @@ export default function SummaryPage() {
     }
   });
 
+  const bulkWorkoutMutation = useMutation({
+    mutationFn: (entries: BulkWorkoutEntry[]) =>
+      addWorkoutLogsBatch(token, { program_id: programId, entries }),
+    onSuccess: async () => {
+      await refreshSummaryQueries(queryClient);
+      setShowBulkForm(false);
+    }
+  });
+
   const dailyHealthMutation = useMutation({
     mutationFn: (payload: { member_id?: string; log_date: string; sleep_hours?: number | null; food_quality?: number | null }) => {
       return addDailyHealthLog(token, {
@@ -178,10 +190,15 @@ export default function SummaryPage() {
             />
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
+          <div className={`grid gap-5 md:grid-cols-2 ${canLogForAny ? "lg:grid-cols-3" : ""}`}>
             <AddWorkoutCard
               onClick={() => (isMobile ? router.push("/summary/log-workout") : setShowWorkoutForm(true))}
             />
+            {canLogForAny && (
+              <BulkAddWorkoutCard
+                onClick={() => (isMobile ? router.push("/summary/bulk-log-workout") : setShowBulkForm(true))}
+              />
+            )}
             <AddHealthCard
               onClick={() => (isMobile ? router.push("/summary/log-health") : setShowHealthForm(true))}
             />
@@ -242,6 +259,22 @@ export default function SummaryPage() {
             onSubmit={(payload) => workoutLogMutation.mutate(payload)}
             isSaving={workoutLogMutation.isPending}
             errorMessage={workoutLogMutation.isError ? (workoutLogMutation.error as Error).message : null}
+          />
+        </Modal>
+
+        <Modal open={showBulkForm} onClose={() => setShowBulkForm(false)}>
+          <BulkLogWorkoutForm
+            programId={programId}
+            token={token}
+            onClose={() => setShowBulkForm(false)}
+            onSubmit={(entries) => bulkWorkoutMutation.mutate(entries)}
+            isSaving={bulkWorkoutMutation.isPending}
+            errorMessage={bulkWorkoutMutation.isError ? (bulkWorkoutMutation.error as Error).message : null}
+            rowErrors={
+              bulkWorkoutMutation.error instanceof ApiError
+                ? (bulkWorkoutMutation.error.details as BulkRowError[] | undefined) ?? null
+                : null
+            }
           />
         </Modal>
 
@@ -365,6 +398,26 @@ function AddWorkoutCard({ onClick }: { onClick: () => void }) {
       <p className="mt-2 text-sm text-black/70">Quick add a session and keep progress up to date.</p>
       <div className="mt-6 inline-flex items-center rounded-full bg-black/15 px-4 py-2 text-sm font-semibold">
         Log session
+      </div>
+    </button>
+  );
+}
+
+function BulkAddWorkoutCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="h-full rounded-3xl bg-gradient-to-br from-violet-400 via-violet-500 to-purple-600 p-6 text-left text-white shadow-lg"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/25 text-lg font-bold">≡</div>
+        <span className="text-sm font-semibold">›</span>
+      </div>
+      <h3 className="mt-4 text-xl font-bold">Bulk add</h3>
+      <p className="mt-2 text-sm text-white/80">Log many sessions for different members at once.</p>
+      <div className="mt-6 inline-flex items-center rounded-full bg-white/20 px-4 py-2 text-sm font-semibold">
+        Add multiple
       </div>
     </button>
   );

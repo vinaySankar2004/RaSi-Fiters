@@ -30,6 +30,21 @@ workoutLogRouter.post("/", authenticateToken, async (req, res) => {
     }
 });
 
+workoutLogRouter.post("/batch", authenticateToken, async (req, res) => {
+    try {
+        const result = await logService.addWorkoutLogsBatch(req.body, req.user);
+        res.status(201).json(result);
+    } catch (err) {
+        if (err instanceof AppError) {
+            const payload = { error: err.message };
+            if (err.rowErrors) payload.rowErrors = err.rowErrors;
+            return res.status(err.statusCode).json(payload);
+        }
+        console.error("Error adding workout logs batch:", err);
+        res.status(500).json({ error: "Failed to add workout logs.", details: err.message });
+    }
+});
+
 workoutLogRouter.put("/", authenticateToken, async (req, res) => {
     try {
         const result = await logService.updateWorkoutLog(req.body, req.user);

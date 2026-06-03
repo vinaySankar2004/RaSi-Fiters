@@ -2,9 +2,11 @@ import { API_BASE_URL } from "@/lib/config";
 
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  details?: unknown;
+  constructor(message: string, status: number, details?: unknown) {
     super(message);
     this.status = status;
+    this.details = details;
   }
 }
 
@@ -62,13 +64,15 @@ export async function apiRequest<T>(
 
       if (!retryResponse.ok) {
         let message = `Request failed (${retryResponse.status})`;
+        let details: unknown;
         try {
           const data = await retryResponse.json();
           message = data?.error || data?.message || message;
+          details = data?.rowErrors;
         } catch {
           // ignore
         }
-        throw new ApiError(message, retryResponse.status);
+        throw new ApiError(message, retryResponse.status, details);
       }
 
       if (retryResponse.status === 204) {
@@ -81,13 +85,15 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
+    let details: unknown;
     try {
       const data = await response.json();
       message = data?.error || data?.message || message;
+      details = data?.rowErrors;
     } catch {
       // ignore
     }
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, details);
   }
 
   if (response.status === 204) {
