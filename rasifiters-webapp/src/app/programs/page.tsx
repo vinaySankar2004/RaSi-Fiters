@@ -158,7 +158,8 @@ export default function ProgramsPage() {
       start_date: program.start_date ?? null,
       end_date: program.end_date ?? null,
       my_role: program.my_role ?? null,
-      my_status: program.my_status ?? null
+      my_status: program.my_status ?? null,
+      admin_only_data_entry: program.admin_only_data_entry ?? false
     });
     router.push("/summary");
   };

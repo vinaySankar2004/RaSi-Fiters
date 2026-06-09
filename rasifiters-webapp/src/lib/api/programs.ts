@@ -12,6 +12,7 @@ export type Program = {
   enrollments_closed?: boolean;
   my_role?: string | null;
   my_status?: string | null;
+  admin_only_data_entry?: boolean;
 };
 
 export type ProgramResponse = {
@@ -21,6 +22,7 @@ export type ProgramResponse = {
   start_date?: string | null;
   end_date?: string | null;
   description?: string | null;
+  admin_only_data_entry?: boolean;
   message?: string;
 };
 
@@ -73,6 +75,7 @@ export async function updateProgram(
     status?: string;
     start_date?: string | null;
     end_date?: string | null;
+    admin_only_data_entry?: boolean;
   }
 ) {
   return apiRequest<ProgramResponse>(`/programs/${programId}`, {

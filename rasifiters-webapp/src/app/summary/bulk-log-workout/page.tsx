@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addWorkoutLogsBatch, BulkRowError, BulkWorkoutEntry } from "@/lib/api/logs";
 import { ApiError } from "@/lib/api/client";
 import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { isDataEntryLocked } from "@/lib/permissions";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { BulkLogWorkoutForm } from "@/components/forms/BulkLogWorkoutForm";
@@ -19,12 +20,16 @@ export default function BulkLogWorkoutPage() {
     session?.user.globalRole === "global_admin" ||
     program?.my_role === "admin" ||
     program?.my_role === "logger";
+  const dataEntryLocked = isDataEntryLocked(session, program);
 
   useEffect(() => {
-    if (program?.id && !canLogForAny) {
+    if (!program?.id) return;
+    if (dataEntryLocked) {
+      router.replace("/summary");
+    } else if (!canLogForAny) {
       router.replace("/summary/log-workout");
     }
-  }, [program?.id, canLogForAny, router]);
+  }, [program?.id, canLogForAny, dataEntryLocked, router]);
 
   const bulkWorkoutMutation = useMutation({
     mutationFn: (entries: BulkWorkoutEntry[]) =>

@@ -22,6 +22,7 @@ import { LogWorkoutForm } from "@/components/forms/LogWorkoutForm";
 import { BulkLogWorkoutForm } from "@/components/forms/BulkLogWorkoutForm";
 import { LogDailyHealthForm } from "@/components/forms/LogDailyHealthForm";
 import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { isDataEntryLocked, DATA_LOCK_MESSAGE } from "@/lib/permissions";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { PageShell } from "@/components/ui/PageShell";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -51,6 +52,7 @@ export default function SummaryPage() {
     session?.user.globalRole === "global_admin" ||
     program?.my_role === "admin" ||
     program?.my_role === "logger";
+  const dataEntryLocked = isDataEntryLocked(session, program);
 
   const analyticsQuery = useQuery({
     queryKey: ["summary", programId, summaryPeriod],
@@ -190,16 +192,26 @@ export default function SummaryPage() {
             />
           </div>
 
+          {dataEntryLocked && (
+            <div className="flex items-center gap-3 rounded-2xl border border-rf-border bg-rf-surface-muted px-4 py-3 text-sm font-semibold text-rf-text-muted">
+              <span aria-hidden>🔒</span>
+              <span>{DATA_LOCK_MESSAGE}</span>
+            </div>
+          )}
+
           <div className={`grid gap-5 md:grid-cols-2 ${canLogForAny ? "lg:grid-cols-3" : ""}`}>
             <AddWorkoutCard
+              disabled={dataEntryLocked}
               onClick={() => (isMobile ? router.push("/summary/log-workout") : setShowWorkoutForm(true))}
             />
             {canLogForAny && (
               <BulkAddWorkoutCard
+                disabled={dataEntryLocked}
                 onClick={() => (isMobile ? router.push("/summary/bulk-log-workout") : setShowBulkForm(true))}
               />
             )}
             <AddHealthCard
+              disabled={dataEntryLocked}
               onClick={() => (isMobile ? router.push("/summary/log-health") : setShowHealthForm(true))}
             />
           </div>
@@ -383,12 +395,13 @@ function ProgramProgressCard({ summary }: { summary?: any }) {
   );
 }
 
-function AddWorkoutCard({ onClick }: { onClick: () => void }) {
+function AddWorkoutCard({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="h-full rounded-3xl bg-gradient-to-br from-orange-300 via-orange-400 to-orange-500 p-6 text-left text-black shadow-lg"
+      disabled={disabled}
+      className="h-full rounded-3xl bg-gradient-to-br from-orange-300 via-orange-400 to-orange-500 p-6 text-left text-black shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
     >
       <div className="flex items-center justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/25 text-lg font-bold">+</div>
@@ -403,12 +416,13 @@ function AddWorkoutCard({ onClick }: { onClick: () => void }) {
   );
 }
 
-function BulkAddWorkoutCard({ onClick }: { onClick: () => void }) {
+function BulkAddWorkoutCard({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="h-full rounded-3xl bg-gradient-to-br from-violet-400 via-violet-500 to-purple-600 p-6 text-left text-white shadow-lg"
+      disabled={disabled}
+      className="h-full rounded-3xl bg-gradient-to-br from-violet-400 via-violet-500 to-purple-600 p-6 text-left text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
     >
       <div className="flex items-center justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/25 text-lg font-bold">≡</div>
@@ -423,12 +437,13 @@ function BulkAddWorkoutCard({ onClick }: { onClick: () => void }) {
   );
 }
 
-function AddHealthCard({ onClick }: { onClick: () => void }) {
+function AddHealthCard({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="h-full rounded-3xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 p-6 text-left text-white shadow-lg"
+      disabled={disabled}
+      className="h-full rounded-3xl bg-gradient-to-br from-sky-400 via-sky-500 to-blue-600 p-6 text-left text-white shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
     >
       <div className="flex items-center justify-between">
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/25 text-lg font-bold">✦</div>

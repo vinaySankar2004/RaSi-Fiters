@@ -55,7 +55,8 @@ export function NotificationsGate() {
           start_date: updated.start_date ?? null,
           end_date: updated.end_date ?? null,
           my_role: updated.my_role ?? null,
-          my_status: updated.my_status ?? null
+          my_status: updated.my_status ?? null,
+          admin_only_data_entry: updated.admin_only_data_entry ?? false
         });
       } else {
         clearActiveProgram();

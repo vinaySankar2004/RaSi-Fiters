@@ -136,7 +136,9 @@ CREATE TABLE programs (
         REFERENCES members(id) ON DELETE SET NULL,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    is_deleted  BOOLEAN NOT NULL DEFAULT false
+    is_deleted  BOOLEAN NOT NULL DEFAULT false,
+    -- When true, only program admins (and global admins) may add/edit/delete data.
+    admin_only_data_entry BOOLEAN NOT NULL DEFAULT false
 );
 
 -- program_memberships (v1) with roles: admin, logger, member

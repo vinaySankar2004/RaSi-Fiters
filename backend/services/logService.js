@@ -1,6 +1,6 @@
 const { Op } = require("sequelize");
 const { sequelize } = require("../config/database");
-const { WorkoutLog, Member, ProgramWorkout, ProgramMembership, Workout, DailyHealthLog } = require("../models");
+const { WorkoutLog, Member, ProgramWorkout, ProgramMembership, Workout, DailyHealthLog, Program } = require("../models");
 const { AppError } = require("../utils/response");
 
 const MAX_BATCH_SIZE = 200;
@@ -25,6 +25,25 @@ async function resolveLogPermissions(program_id, requester) {
     if (!membership) throw new AppError(403, "You are not enrolled in this program.");
 
     return ["admin", "logger"].includes(membership.role);
+}
+
+/** True if the requester is a program admin (or a global admin). */
+async function isProgramAdmin(program_id, requester) {
+    if (requester?.global_role === "global_admin") return true;
+    const membership = await ProgramMembership.findOne({
+        where: { program_id, member_id: requester?.id }
+    });
+    return membership?.role === "admin";
+}
+
+/** Enforce the per-program "admin-only data entry" lock. When the program has
+ *  admin_only_data_entry = true, only program admins (and global admins) may
+ *  add/edit/delete data — loggers and members are blocked. */
+async function assertDataEntryAllowed(program_id, requester) {
+    const program = await Program.findByPk(program_id);
+    if (program?.admin_only_data_entry && !(await isProgramAdmin(program_id, requester))) {
+        throw new AppError(403, "This program is locked: only program admins can add, edit, or delete data.");
+    }
 }
 
 const parseOptionalNumber = (value) => {
@@ -124,6 +143,8 @@ async function addWorkoutLog({ member_name, member_id: bodyMemberId, workout_nam
     if (!program_id) throw new AppError(400, "program_id is required.");
     if (isNaN(duration)) throw new AppError(400, "Duration must be a number.");
 
+    await assertDataEntryAllowed(program_id, requester);
+
     let member_id = requester.id;
     const canLogForAny = await resolveLogPermissions(program_id, requester);
 
@@ -182,6 +203,8 @@ async function addWorkoutLogsBatch({ program_id, entries }, requester) {
     if (entries.length > MAX_BATCH_SIZE) {
         throw new AppError(400, `Batch too large (max ${MAX_BATCH_SIZE} rows).`);
     }
+
+    await assertDataEntryAllowed(program_id, requester);
 
     const canLogForAny = await resolveLogPermissions(program_id, requester);
     if (!canLogForAny) throw new AppError(403, "You do not have permission to bulk-log workouts.");
@@ -314,6 +337,8 @@ async function updateWorkoutLog({ member_name, workout_name, date, duration, pro
     }
     if (!program_id) throw new AppError(400, "program_id is required.");
 
+    await assertDataEntryAllowed(program_id, requester);
+
     let member_id = requester.id;
 
     if (member_name && member_name !== requester.member_name) {
@@ -345,6 +370,8 @@ async function updateWorkoutLog({ member_name, workout_name, date, duration, pro
 async function deleteWorkoutLog({ member_id, member_name, workout_name, date, program_id }, requester) {
     if (!workout_name || !date) throw new AppError(400, "Workout name and date are required.");
     if (!program_id) throw new AppError(400, "program_id is required.");
+
+    await assertDataEntryAllowed(program_id, requester);
 
     const programWorkout = await ProgramWorkout.findOne({
         where: { program_id, workout_name: workout_name.trim() }
@@ -416,6 +443,8 @@ async function addDailyHealthLog({ program_id, log_date, sleep_hours, food_quali
     if (foodValue !== null && (!Number.isInteger(foodValue) || foodValue < 1 || foodValue > 5)) {
         throw new AppError(400, "food_quality must be an integer between 1 and 5.");
     }
+
+    await assertDataEntryAllowed(program_id, requester);
 
     const canLogForAny = await resolveLogPermissions(program_id, requester);
 
@@ -553,6 +582,8 @@ async function updateDailyHealthLog({ program_id, log_date, sleep_hours, food_qu
         throw new AppError(400, "food_quality must be an integer between 1 and 5.");
     }
 
+    await assertDataEntryAllowed(program_id, requester);
+
     const canLogForAny = await resolveLogPermissions(program_id, requester);
 
     let targetMemberId = requester?.id;
@@ -581,6 +612,8 @@ async function updateDailyHealthLog({ program_id, log_date, sleep_hours, food_qu
 
 async function deleteDailyHealthLog({ program_id, log_date, member_id: bodyMemberId }, requester) {
     if (!program_id || !log_date) throw new AppError(400, "program_id and log_date are required.");
+
+    await assertDataEntryAllowed(program_id, requester);
 
     const canLogForAny = await resolveLogPermissions(program_id, requester);
 

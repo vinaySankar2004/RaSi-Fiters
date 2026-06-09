@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { isDataEntryLocked } from "@/lib/permissions";
 import { fetchMemberRecentWorkouts, type MemberRecentItem } from "@/lib/api/members";
 import { fetchProgramWorkouts } from "@/lib/api/program-workouts";
 import { deleteWorkoutLog, updateWorkoutLog } from "@/lib/api/logs";
@@ -50,10 +51,11 @@ export default function MemberWorkoutsPage() {
   const canViewAny = isGlobalAdmin || program?.my_role === "admin" || program?.my_role === "logger";
   const loggedInUserId = session?.user.id;
   const canDelete =
-    isGlobalAdmin ||
-    program?.my_role === "admin" ||
-    program?.my_role === "logger" ||
-    memberId === loggedInUserId;
+    !isDataEntryLocked(session, program) &&
+    (isGlobalAdmin ||
+      program?.my_role === "admin" ||
+      program?.my_role === "logger" ||
+      memberId === loggedInUserId);
   const canEdit = canDelete;
 
   const [sortField, setSortField] = useState("date");

@@ -6,6 +6,7 @@ export type ActiveProgram = {
   end_date?: string | null;
   my_role?: string | null;
   my_status?: string | null;
+  admin_only_data_entry?: boolean | null;
 };
 
 const ACTIVE_PROGRAM_KEY = "rasi.fiters.activeProgram";

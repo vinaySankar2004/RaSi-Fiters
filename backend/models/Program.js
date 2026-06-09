@@ -38,6 +38,11 @@ const Program = sequelize.define("Program", {
         allowNull: false,
         defaultValue: false
     },
+    admin_only_data_entry: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+    },
     created_at: {
         type: DataTypes.DATE,
         defaultValue: DataTypes.NOW

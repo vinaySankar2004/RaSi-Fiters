@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addDailyHealthLog } from "@/lib/api/logs";
 import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { isDataEntryLocked } from "@/lib/permissions";
 import { PageShell } from "@/components/ui/PageShell";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { LogDailyHealthForm } from "@/components/forms/LogDailyHealthForm";
@@ -17,6 +19,13 @@ export default function LogHealthPage() {
     session?.user.globalRole === "global_admin" ||
     program?.my_role === "admin" ||
     program?.my_role === "logger";
+  const dataEntryLocked = isDataEntryLocked(session, program);
+
+  useEffect(() => {
+    if (program?.id && dataEntryLocked) {
+      router.replace("/summary");
+    }
+  }, [program?.id, dataEntryLocked, router]);
 
   const dailyHealthMutation = useMutation({
     mutationFn: (payload: {

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthGuard } from "@/lib/hooks/use-auth-guard";
+import { isDataEntryLocked } from "@/lib/permissions";
 import { fetchMemberHealthLogs, type MemberHealthItem } from "@/lib/api/members";
 import { deleteDailyHealthLog, updateDailyHealthLog } from "@/lib/api/logs";
 import { Select } from "@/components/Select";
@@ -56,7 +57,7 @@ export default function MemberHealthPage() {
   const isProgramAdmin = program?.my_role === "admin" || program?.my_role === "logger";
   const loggedInUserId = session?.user.id;
   const canViewAny = isGlobalAdmin || isProgramAdmin;
-  const canEdit = canViewAny || memberId === loggedInUserId;
+  const canEdit = !isDataEntryLocked(session, program) && (canViewAny || memberId === loggedInUserId);
 
   const [sortField, setSortField] = useState("date");
   const [sortDir, setSortDir] = useState("desc");

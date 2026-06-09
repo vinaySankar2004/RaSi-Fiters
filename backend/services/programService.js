@@ -9,9 +9,9 @@ async function getPrograms(requester) {
 
     if (isGlobalAdmin) {
         const [results] = await sequelize.query(`
-            SELECT 
+            SELECT
                 p.id, p.name, p.status, p.start_date, p.end_date,
-                p.is_deleted, p.created_at, p.updated_at,
+                p.is_deleted, p.created_at, p.updated_at, p.admin_only_data_entry,
                 COALESCE(COUNT(DISTINCT CASE WHEN pm.status = 'active' THEN pm.member_id END), 0)::int AS total_members,
                 COALESCE(COUNT(DISTINCT CASE WHEN pm.status = 'active' THEN pm.member_id END), 0)::int AS active_members,
                 pm_user.role AS my_role,
@@ -36,9 +36,9 @@ async function getPrograms(requester) {
     }
 
     const [results] = await sequelize.query(`
-        SELECT 
+        SELECT
             p.id, p.name, p.status, p.start_date, p.end_date,
-            p.is_deleted, p.created_at, p.updated_at,
+            p.is_deleted, p.created_at, p.updated_at, p.admin_only_data_entry,
             COALESCE(COUNT(DISTINCT pm_all.member_id), 0)::int AS total_members,
             COALESCE(COUNT(DISTINCT pm_all.member_id), 0)::int AS active_members,
             pm_user.role AS my_role,
@@ -112,7 +112,7 @@ async function createProgram({ name, status, start_date, end_date, description }
     }
 }
 
-async function updateProgram(programId, { name, status, start_date, end_date }, requester) {
+async function updateProgram(programId, { name, status, start_date, end_date, admin_only_data_entry }, requester) {
     const program = await Program.findOne({ where: { id: programId, is_deleted: false } });
     if (!program) throw new AppError(404, "Program not found.");
 
@@ -127,7 +127,8 @@ async function updateProgram(programId, { name, status, start_date, end_date }, 
         name: program.name,
         status: program.status,
         start_date: program.start_date ? String(program.start_date) : null,
-        end_date: program.end_date ? String(program.end_date) : null
+        end_date: program.end_date ? String(program.end_date) : null,
+        admin_only_data_entry: String(program.admin_only_data_entry)
     };
 
     const updateData = {};
@@ -135,11 +136,14 @@ async function updateProgram(programId, { name, status, start_date, end_date }, 
     if (status !== undefined) updateData.status = status;
     if (start_date !== undefined) updateData.start_date = start_date;
     if (end_date !== undefined) updateData.end_date = end_date;
+    if (admin_only_data_entry !== undefined) {
+        updateData.admin_only_data_entry = admin_only_data_entry === true || admin_only_data_entry === "true";
+    }
     updateData.updated_at = new Date();
 
     await program.update(updateData);
 
-    const detailFields = ["name", "status", "start_date", "end_date"];
+    const detailFields = ["name", "status", "start_date", "end_date", "admin_only_data_entry"];
     const hasDetailChange = detailFields.some((field) => {
         if (updateData[field] === undefined) return false;
         const nextValue = updateData[field] === null ? null : String(updateData[field]);
@@ -166,6 +170,7 @@ async function updateProgram(programId, { name, status, start_date, end_date }, 
         status: program.status,
         start_date: program.start_date,
         end_date: program.end_date,
+        admin_only_data_entry: program.admin_only_data_entry,
         message: "Program updated successfully."
     };
 }
