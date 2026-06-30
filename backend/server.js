@@ -37,6 +37,24 @@ app.get("/", (req, res) => {
 
 app.use(express.json());
 
+// Sunset block: the legacy iOS app is being retired. Block NEW INPUTS from it (it writes
+// to this old DB) so the migrated Supabase data stays authoritative. Reads + session auth
+// (login/refresh/logout) stay alive so users can still browse. 426 (Upgrade Required)
+// surfaces the message verbatim in the iOS alert; 401/403 must be avoided here (the app
+// treats those as auth failure and signs the user out).
+// ON by default — set MAINTENANCE_MODE=false in the environment to re-enable writes.
+app.use((req, res, next) => {
+    if (process.env.MAINTENANCE_MODE === "false") return next();
+    const isMutation = ["POST", "PUT", "DELETE", "PATCH"].includes(req.method);
+    const isSessionAuth = /^\/api\/auth\/(login(\/(app|global))?|refresh|logout)$/.test(req.path);
+    if (isMutation && !isSessionAuth) {
+        return res.status(426).json({
+            error: "RaSi Fiters has moved to the web. Please use rasifiters.com to add new entries — the new mobile app is coming very soon."
+        });
+    }
+    next();
+});
+
 app.get("/api/app-config", (req, res) => {
     res.json({
         min_ios_version: process.env.MIN_IOS_VERSION || null
